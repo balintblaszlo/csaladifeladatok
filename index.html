@@ -17,10 +17,14 @@
         .login-box { background: white; padding: 20px; border-radius: 10px; width: 85%; max-width: 320px; text-align: center; color: #333; box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
         .login-box input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; font-size: 1rem; }
         
-        /* HEADER */
-        header { background: white; padding: 15px; position: sticky; top:0; z-index:100; box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
-        h1 { margin: 0; font-size: 1.3rem; color: var(--main); }
-        .user-badge { background: var(--main); color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
+        /* HEADER - ÚJ: Flexbox igazítás a kód megjelenítéséhez */
+        header { background: white; padding: 10px 15px; position: sticky; top:0; z-index:100; box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
+        .header-left { display: flex; flex-direction: column; }
+        h1 { margin: 0; font-size: 1.2rem; color: var(--main); line-height: 1.2; }
+        .fam-code-display { font-size: 0.75rem; color: #888; margin-top: 2px; }
+        .fam-code-display strong { color: var(--main); }
+        
+        .user-badge { background: var(--main); color: white; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; }
 
         /* TABOK */
         .container { padding: 15px; max-width: 600px; margin: 0 auto; }
@@ -37,7 +41,6 @@
         .status-todo { border-left-color: var(--warn); }
         .status-done { border-left-color: var(--accent); background: #f0fcf9; opacity: 0.8; }
         .status-planned { border-left-color: var(--main); }
-        /* Új stílus a skippelt feladatoknak */
         .status-skipped { border-left-color: var(--grey); background: #f9f9f9; opacity: 0.6; filter: grayscale(100%); }
 
         .task-header { display: flex; justify-content: space-between; align-items: flex-start; }
@@ -99,7 +102,10 @@
 
 <div id="app" style="display:none;">
     <header>
-        <h1>Teendők</h1>
+        <div class="header-left">
+            <h1>Családi Napló</h1>
+            <div class="fam-code-display">Kód: <strong id="display-fam-id"></strong></div>
+        </div>
         <div class="user-badge" id="display-user"></div>
     </header>
 
@@ -255,7 +261,7 @@
         daily: [],
         categories: [],
         todayStr: new Date().toISOString().split('T')[0],
-        currentDateObj: new Date() // ÚJ: Navigációhoz
+        currentDateObj: new Date() // Navigációhoz
     };
     
     // Figyelő leiratkozáshoz
@@ -284,12 +290,16 @@
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('app').style.display = 'block';
         document.getElementById('navbar').style.display = 'flex';
+        
+        // Felhasználó és CSALÁD KÓD kijelzése
         document.getElementById('display-user').innerText = state.user;
+        document.getElementById('display-fam-id').innerText = state.famId;
+        
         updateDateDisplay();
         setupListeners();
     }
     
-    // ÚJ: Dátum formázás és léptetés
+    // Dátum formázás és léptetés
     function updateDateDisplay() {
         document.getElementById('today-date').innerText = state.currentDateObj.toLocaleDateString('hu-HU', {weekday:'long', month:'long', day:'numeric'});
         state.todayStr = state.currentDateObj.toISOString().split('T')[0];
@@ -335,7 +345,7 @@
         });
     }
 
-    // ÚJ: Külön függvény a napi lista figyelésére, hogy cserélhető legyen dátum váltáskor
+    // Külön függvény a napi lista figyelésére
     function setupDailyListener() {
         if (unsubscribeDaily) unsubscribeDaily(); // Leiratkozás az előző napról
 
@@ -361,9 +371,6 @@
         
         try {
             const doc = await ref.get();
-            // Csak akkor generálunk, ha még nincs, és a dátum >= ma (vagy engedjük mindig?)
-            // A kérés szerint "ránézni az előzőre", de generálni visszamenőleg nem mindig szerencsés.
-            // Most engedjük, hogy bármelyik napra generáljon, amit megnyitunk.
             if(!doc.exists) {
                 let items = [];
                 const checkDate = state.currentDateObj; // A kiválasztott dátum
@@ -417,7 +424,7 @@
     function renderToday() {
         const list = document.getElementById('task-list'); list.innerHTML = '';
         let done = 0;
-        let totalRelevant = 0; // ÚJ: Csak a nem skippelt feladatokat számoljuk
+        let totalRelevant = 0; // Csak a nem skippelt feladatokat számoljuk
 
         state.daily.forEach((item, idx) => {
             // Ha skippelt, nem számít bele a totálba
@@ -440,11 +447,9 @@
                 btns = `<div style="margin-top:10px; color:var(--accent); font-weight:bold;">✅ Elvégezte: ${item.doneBy}</div>`;
             } 
             else if (item.status === 'skipped') {
-                // Ha skippelt, mutassuk, hogy "Nem releváns", de lehessen visszavonni
                 btns = `<div style="margin-top:10px; color:#aaa; font-style:italic;">🚫 Nem releváns (Kihagyva) <button onclick="resetTask(${idx})" style="background:none; border:none; color:var(--main); text-decoration:underline; cursor:pointer;">Visszaállít</button></div>`;
             }
             else {
-                // Normál feladat gombok + ÚJ Skip gomb
                 btns = `
                 <div class="btn-row">
                     <button class="btn-skip" onclick="skipTask(${idx})" title="Nem releváns / Kiütés">🚫</button>
@@ -456,12 +461,12 @@
             list.innerHTML += `<div class="card ${statusClass}"><div class="task-header"><div><div class="task-cat">${item.cat}</div><div class="task-name">${item.name}</div><div class="task-detail">${item.desc || ''}</div></div></div>${planInfo}${btns}</div>`;
         });
 
-        // STATISZTIKA FRISSÍTÉSE (Skippelt figyelmen kívül hagyva)
+        // STATISZTIKA FRISSÍTÉSE
         const pct = totalRelevant > 0 ? (done / totalRelevant) * 100 : (state.daily.length > 0 && totalRelevant === 0 ? 100 : 0);
         
         document.getElementById('daily-progress').style.width = pct + "%";
         
-        // Üres üzenet, ha minden kész VAGY minden skippelt
+        // Üres üzenet
         const allDoneOrSkipped = state.daily.every(i => i.status === 'done' || i.status === 'skipped');
         document.getElementById('empty-msg').style.display = (state.daily.length > 0 && allDoneOrSkipped) ? 'block' : 'none';
         
@@ -479,17 +484,14 @@
         saveDaily();
         db.collection('families').doc(state.famId).collection('history').add({ task: state.daily[idx].name, user: state.user, ts: firebase.firestore.FieldValue.serverTimestamp() });
     }
-    // ÚJ: Skip funkció
     function skipTask(idx) {
         if(confirm("Biztosan nem releváns ez a feladat mára?")) {
             state.daily[idx].status = 'skipped';
-            // Opcionális: töröljük a tervezést ha volt
             delete state.daily[idx].plannedBy;
             delete state.daily[idx].plannedTime;
             saveDaily();
         }
     }
-    // ÚJ: Visszaállítás
     function resetTask(idx) {
         state.daily[idx].status = 'todo';
         saveDaily();
