@@ -167,14 +167,14 @@
 <script>
     // --- 1. FIREBASE CONFIG ---
     // Ide másold be a Firebase Console-ból kapott configot!
-    const firebaseConfig = {
-        apiKey: "IDE_MASOLD_AZ_API_KEYT",
-        authDomain: "PROJEKTNEV.firebaseapp.com",
-        projectId: "PROJEKTNEV",
-        storageBucket: "PROJEKTNEV.appspot.com",
-        messagingSenderId: "...",
-        appId: "..."
-    };
+  const firebaseConfig = {
+    apiKey: "AIzaSyD4cCZROENWwtdJSw8RibOOoUcyzhWvmKM",
+    authDomain: "csaladifeladatok.firebaseapp.com",
+    projectId: "csaladifeladatok",
+    storageBucket: "csaladifeladatok.firebasestorage.app",
+    messagingSenderId: "391183062816",
+    appId: "1:391183062816:web:0bf885d26c67447c50e945"
+  };
 
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
