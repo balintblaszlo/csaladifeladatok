@@ -9,7 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
     <style>
-        :root { --main: #4a90e2; --accent: #50e3c2; --bg: #f5f7fa; --danger: #ff6b6b; --warn: #f8e71c; --text: #333; }
+        :root { --main: #4a90e2; --accent: #50e3c2; --bg: #f5f7fa; --danger: #ff6b6b; --warn: #f8e71c; --text: #333; --grey: #b0b0b0; }
         body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; background: var(--bg); color: var(--text); padding-bottom: 80px; user-select: none; }
         
         /* LOGIN */
@@ -27,11 +27,18 @@
         .tab-content { display: none; animation: fadein 0.3s; }
         .tab-content.active { display: block; }
 
+        /* DÁTUM NAVIGÁCIÓ */
+        .date-nav { display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 15px; color: #666; }
+        .nav-arrow { background: none; border: 1px solid #ddd; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--main); font-weight: bold; padding: 0; }
+        .nav-arrow:active { background: #eee; }
+
         /* KÁRTYÁK */
         .card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.03); border-left: 5px solid #ccc; position: relative; }
         .status-todo { border-left-color: var(--warn); }
         .status-done { border-left-color: var(--accent); background: #f0fcf9; opacity: 0.8; }
         .status-planned { border-left-color: var(--main); }
+        /* Új stílus a skippelt feladatoknak */
+        .status-skipped { border-left-color: var(--grey); background: #f9f9f9; opacity: 0.6; filter: grayscale(100%); }
 
         .task-header { display: flex; justify-content: space-between; align-items: flex-start; }
         .task-cat { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #999; font-weight: bold; margin-bottom: 2px; }
@@ -45,8 +52,9 @@
         .btn-row { display: flex; gap: 8px; margin-top: 12px; }
         button { border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; flex: 1; font-size: 0.9rem; transition: 0.2s; color: white; }
         button:active { transform: scale(0.98); }
-        .btn-done { background: var(--accent); color: #00796b; }
-        .btn-plan { background: #ddd; color: #555; }
+        .btn-done { background: var(--accent); color: #00796b; flex: 2; }
+        .btn-plan { background: #ddd; color: #555; flex: 1; }
+        .btn-skip { background: #fff; border: 1px solid #ddd; color: #aaa; flex: 0.5; font-size: 1.2rem; padding: 0; display: flex; align-items: center; justify-content: center;}
         .btn-primary { background: var(--main); width: 100%; }
         .btn-danger { background: var(--danger); }
         
@@ -91,13 +99,17 @@
 
 <div id="app" style="display:none;">
     <header>
-        <h1>Mai Teendők</h1>
+        <h1>Teendők</h1>
         <div class="user-badge" id="display-user"></div>
     </header>
 
     <div class="container">
         <div id="tab-today" class="tab-content active">
-            <div id="today-date" style="text-align:center; color:#888; margin-bottom:15px; font-size:0.9rem;"></div>
+            <div class="date-nav">
+                <button class="nav-arrow" onclick="changeDay(-1)">❮</button>
+                <div id="today-date" style="font-weight:bold; width:180px; text-align:center;"></div>
+                <button class="nav-arrow" onclick="changeDay(1)">❯</button>
+            </div>
             
             <div class="stat-bar">
                 <div id="daily-progress" class="stat-fill" style="width: 0%"></div>
@@ -110,7 +122,7 @@
                 <p>Mára minden kész!</p>
             </div>
             
-            <button onclick="checkAndGenerateDaily()" style="margin-top:30px; background:none; color:#aaa; font-size:0.8rem; width:100%;">🔄 Lista frissítése</button>
+            <button onclick="checkAndGenerateDaily()" style="margin-top:30px; background:none; color:#aaa; font-size:0.8rem; width:100%;">🔄 Lista frissítése erre a napra</button>
         </div>
 
         <div id="tab-summary" class="tab-content">
@@ -242,8 +254,12 @@
         tasks: [], 
         daily: [],
         categories: [],
-        todayStr: new Date().toISOString().split('T')[0]
+        todayStr: new Date().toISOString().split('T')[0],
+        currentDateObj: new Date() // ÚJ: Navigációhoz
     };
+    
+    // Figyelő leiratkozáshoz
+    let unsubscribeDaily = null;
 
     // --- 3. LOGIN & INIT ---
     if(state.famId && state.user) startApp();
@@ -269,8 +285,20 @@
         document.getElementById('app').style.display = 'block';
         document.getElementById('navbar').style.display = 'flex';
         document.getElementById('display-user').innerText = state.user;
-        document.getElementById('today-date').innerText = new Date().toLocaleDateString('hu-HU', {weekday:'long', month:'long', day:'numeric'});
+        updateDateDisplay();
         setupListeners();
+    }
+    
+    // ÚJ: Dátum formázás és léptetés
+    function updateDateDisplay() {
+        document.getElementById('today-date').innerText = state.currentDateObj.toLocaleDateString('hu-HU', {weekday:'long', month:'long', day:'numeric'});
+        state.todayStr = state.currentDateObj.toISOString().split('T')[0];
+    }
+    
+    function changeDay(offset) {
+        state.currentDateObj.setDate(state.currentDateObj.getDate() + offset);
+        updateDateDisplay();
+        setupDailyListener(); // Újratöltjük a listát az új napra
     }
 
     function setupListeners() {
@@ -283,19 +311,16 @@
             renderCategoryChips();
         });
 
-        // FELADATOK
+        // FELADAT DEFINÍCIÓK
         famRef.collection('tasks').onSnapshot(snap => {
             state.tasks = [];
             snap.forEach(d => state.tasks.push({id: d.id, ...d.data()}));
             renderManageList();
-            checkAndGenerateDaily();
+            checkAndGenerateDaily(); // Ha betöltődtek a definíciók, generáljunk ha kell
         });
-
-        // NAPI TEENDŐK
-        famRef.collection('daily').doc(state.todayStr).onSnapshot(doc => {
-            if(doc.exists) { state.daily = doc.data().items || []; renderToday(); }
-            else { checkAndGenerateDaily(); }
-        });
+        
+        // Napi listener elindítása
+        setupDailyListener();
 
         // HISTORY
         famRef.collection('history').orderBy('ts', 'desc').limit(20).onSnapshot(snap => {
@@ -310,46 +335,57 @@
         });
     }
 
-    // --- 4. OKOS GENERÁLÁS LOGIKA (GOOGLE NAPTÁR STÍLUS) ---
+    // ÚJ: Külön függvény a napi lista figyelésére, hogy cserélhető legyen dátum váltáskor
+    function setupDailyListener() {
+        if (unsubscribeDaily) unsubscribeDaily(); // Leiratkozás az előző napról
+
+        const famRef = db.collection('families').doc(state.famId);
+        unsubscribeDaily = famRef.collection('daily').doc(state.todayStr).onSnapshot(doc => {
+            if(doc.exists) { 
+                state.daily = doc.data().items || []; 
+                renderToday(); 
+            } else { 
+                // Ha üres a nap, töröljük a listát a nézetben és próbáljunk generálni
+                state.daily = [];
+                renderToday();
+                checkAndGenerateDaily(); 
+            }
+        });
+    }
+
+    // --- 4. GENERÁLÁS LOGIKA ---
     async function checkAndGenerateDaily() {
         if(state.tasks.length === 0) return;
+        
         const ref = db.collection('families').doc(state.famId).collection('daily').doc(state.todayStr);
         
         try {
             const doc = await ref.get();
+            // Csak akkor generálunk, ha még nincs, és a dátum >= ma (vagy engedjük mindig?)
+            // A kérés szerint "ránézni az előzőre", de generálni visszamenőleg nem mindig szerencsés.
+            // Most engedjük, hogy bármelyik napra generáljon, amit megnyitunk.
             if(!doc.exists) {
-                // Generálás: Végigmegyünk a feladatokon és megnézzük, MA esedékes-e
                 let items = [];
-                const today = new Date();
-                const dayOfWeek = today.getDay(); // 0=V, 1=H...
-                const dateNum = today.getDate(); // 1-31
+                const checkDate = state.currentDateObj; // A kiválasztott dátum
+                const dayOfWeek = checkDate.getDay(); 
+                const dateNum = checkDate.getDate();
 
                 state.tasks.forEach(t => {
                     let isDue = false;
 
                     if (t.freqType === 'daily') {
-                        // Napi/Heti: ha be van pipálva a mai nap
                         if (t.days && t.days.includes(dayOfWeek)) isDue = true;
-                        // Ha nincs nap megadva, akkor minden nap (régi logika)
                         if (!t.days || t.days.length === 0) isDue = true; 
                     } 
                     else if (t.freqType === 'monthly_date') {
-                        // Fix nap: pl. minden hónap 12. napján
                         if (dateNum == t.monthDay) isDue = true;
                     }
                     else if (t.freqType === 'monthly_pos') {
-                        // Pozíció: pl. Első Hétfő
-                        // 1. Stimmel a nap neve? (pl. Hétfő)
                         if (dayOfWeek == t.posDay) {
-                             // 2. Hányadik ilyen nap ez a hónapban?
-                             // Pl. 1-7 között az 1., 8-14 között a 2.
                              const weekNum = Math.ceil(dateNum / 7);
                              if (weekNum == t.posNum) isDue = true;
-                             
-                             // Utolsó kezelése (pl. Utolsó péntek)
                              if (t.posNum == -1) {
-                                 // Megnézzük, van-e még egy ilyen nap a hónapban
-                                 const daysInMonth = new Date(today.getFullYear(), today.getMonth()+1, 0).getDate();
+                                 const daysInMonth = new Date(checkDate.getFullYear(), checkDate.getMonth()+1, 0).getDate();
                                  if (dateNum + 7 > daysInMonth) isDue = true;
                              }
                         }
@@ -381,18 +417,55 @@
     function renderToday() {
         const list = document.getElementById('task-list'); list.innerHTML = '';
         let done = 0;
+        let totalRelevant = 0; // ÚJ: Csak a nem skippelt feladatokat számoljuk
+
         state.daily.forEach((item, idx) => {
-            if(item.status === 'done') done++;
-            let statusClass = item.status === 'done' ? 'status-done' : (item.plannedBy ? 'status-planned' : 'status-todo');
+            // Ha skippelt, nem számít bele a totálba
+            if (item.status !== 'skipped') {
+                totalRelevant++;
+                if (item.status === 'done') done++;
+            }
+
+            let statusClass = 'status-todo';
+            if (item.status === 'done') statusClass = 'status-done';
+            else if (item.status === 'skipped') statusClass = 'status-skipped';
+            else if (item.plannedBy) statusClass = 'status-planned';
+
             let planInfo = item.plannedBy ? `<div class="plan-info">✋ ${item.plannedBy} vállalta ${item.plannedTime ? 'ekkora: '+item.plannedTime : ''}</div>` : '';
-            let btns = item.status !== 'done' ? `<div class="btn-row"><button class="btn-plan" onclick="planTask(${idx})">${item.plannedBy?'Módosít':'✋ Vállalom'}</button><button class="btn-done" onclick="finishTask(${idx})">✔ Kész</button></div>` : `<div style="margin-top:10px; color:var(--accent); font-weight:bold;">✅ Elvégezte: ${item.doneBy}</div>`;
+            
+            // GOMBOK GENERÁLÁSA
+            let btns = '';
+            
+            if (item.status === 'done') {
+                btns = `<div style="margin-top:10px; color:var(--accent); font-weight:bold;">✅ Elvégezte: ${item.doneBy}</div>`;
+            } 
+            else if (item.status === 'skipped') {
+                // Ha skippelt, mutassuk, hogy "Nem releváns", de lehessen visszavonni
+                btns = `<div style="margin-top:10px; color:#aaa; font-style:italic;">🚫 Nem releváns (Kihagyva) <button onclick="resetTask(${idx})" style="background:none; border:none; color:var(--main); text-decoration:underline; cursor:pointer;">Visszaállít</button></div>`;
+            }
+            else {
+                // Normál feladat gombok + ÚJ Skip gomb
+                btns = `
+                <div class="btn-row">
+                    <button class="btn-skip" onclick="skipTask(${idx})" title="Nem releváns / Kiütés">🚫</button>
+                    <button class="btn-plan" onclick="planTask(${idx})">${item.plannedBy?'Módosít':'✋ Vállalom'}</button>
+                    <button class="btn-done" onclick="finishTask(${idx})">✔ Kész</button>
+                </div>`;
+            }
             
             list.innerHTML += `<div class="card ${statusClass}"><div class="task-header"><div><div class="task-cat">${item.cat}</div><div class="task-name">${item.name}</div><div class="task-detail">${item.desc || ''}</div></div></div>${planInfo}${btns}</div>`;
         });
-        const pct = state.daily.length > 0 ? (done / state.daily.length) * 100 : 0;
+
+        // STATISZTIKA FRISSÍTÉSE (Skippelt figyelmen kívül hagyva)
+        const pct = totalRelevant > 0 ? (done / totalRelevant) * 100 : (state.daily.length > 0 && totalRelevant === 0 ? 100 : 0);
+        
         document.getElementById('daily-progress').style.width = pct + "%";
-        document.getElementById('empty-msg').style.display = (state.daily.length > 0 && done === state.daily.length) ? 'block' : 'none';
-        document.getElementById('stat-total').innerText = state.daily.length;
+        
+        // Üres üzenet, ha minden kész VAGY minden skippelt
+        const allDoneOrSkipped = state.daily.every(i => i.status === 'done' || i.status === 'skipped');
+        document.getElementById('empty-msg').style.display = (state.daily.length > 0 && allDoneOrSkipped) ? 'block' : 'none';
+        
+        document.getElementById('stat-total').innerText = totalRelevant;
     }
 
     // --- 5. INTERAKCIÓK ---
@@ -406,6 +479,22 @@
         saveDaily();
         db.collection('families').doc(state.famId).collection('history').add({ task: state.daily[idx].name, user: state.user, ts: firebase.firestore.FieldValue.serverTimestamp() });
     }
+    // ÚJ: Skip funkció
+    function skipTask(idx) {
+        if(confirm("Biztosan nem releváns ez a feladat mára?")) {
+            state.daily[idx].status = 'skipped';
+            // Opcionális: töröljük a tervezést ha volt
+            delete state.daily[idx].plannedBy;
+            delete state.daily[idx].plannedTime;
+            saveDaily();
+        }
+    }
+    // ÚJ: Visszaállítás
+    function resetTask(idx) {
+        state.daily[idx].status = 'todo';
+        saveDaily();
+    }
+
     function saveDaily() { db.collection('families').doc(state.famId).collection('daily').doc(state.todayStr).update({ items: state.daily }); }
 
     // --- 6. BEÁLLÍTÁSOK LOGIKA ---
@@ -434,7 +523,7 @@
             document.querySelectorAll('.day-btn.selected').forEach(el => {
                 const txt = el.innerText;
                 if(txt=='V') days.push(0); if(txt=='H') days.push(1); if(txt=='K') days.push(2);
-                if(txt=='Sz') days.push(3); if(txt=='Cs') days.push(4); if(txt=='P') days.push(5); if(txt=='Szo') days.push(6); // Szombat javítva
+                if(txt=='Sz') days.push(3); if(txt=='Cs') days.push(4); if(txt=='P') days.push(5); if(txt=='Szo') days.push(6);
             });
             if(days.length === 0) return alert("Válassz legalább egy napot!");
             taskObj.days = days;
@@ -456,7 +545,6 @@
         db.collection('families').doc(state.famId).collection('tasks').add(taskObj).then(() => {
             alert("Siker!");
             document.getElementById('new-name').value = '';
-            // Reset UI
             document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('selected'));
         });
     }
