@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Családi Napló</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root { --main: #4a90e2; --accent: #50e3c2; --bg: #f5f7fa; --danger: #ff6b6b; --warn: #f8e71c; --text: #333; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; background: var(--bg); color: var(--text); padding-bottom: 80px; user-select: none; }
+        
+        /* LOGIN */
+        #login-screen { position: fixed; inset: 0; background: var(--main); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
+        .login-box { background: white; padding: 20px; border-radius: 10px; width: 80%; max-width: 300px; text-align: center; color: #333; box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+        .login-box input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        
+        /* HEADER */
+        header { background: white; padding: 15px; position: sticky; top:0; z-index:100; box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
+        h1 { margin: 0; font-size: 1.3rem; color: var(--main); }
+        .user-badge { background: var(--main); color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
+
+        /* TABOK */
+        .container { padding: 15px; max-width: 600px; margin: 0 auto; }
+        .tab-content { display: none; animation: fadein 0.3s; }
+        .tab-content.active { display: block; }
+
+        /* KÁRTYÁK */
+        .card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.03); border-left: 5px solid #ccc; position: relative; }
+        .status-todo { border-left-color: var(--warn); }
+        .status-done { border-left-color: var(--accent); background: #f0fcf9; opacity: 0.8; }
+        .status-planned { border-left-color: var(--main); }
+
+        .task-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .task-cat { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #999; font-weight: bold; margin-bottom: 2px; }
+        .task-name { font-size: 1.1rem; font-weight: 700; color: #2c3e50; }
+        .task-desc { font-size: 0.9rem; color: #666; margin-top: 4px; }
+        
+        /* TERVEZÉS INFO */
+        .plan-info { background: #eef6ff; color: var(--main); padding: 5px 10px; border-radius: 5px; font-size: 0.85rem; margin-top: 10px; display: inline-block; border: 1px solid #cfe2ff; }
+
+        /* GOMBOK */
+        .btn-row { display: flex; gap: 8px; margin-top: 12px; }
+        button { border: none; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer; flex: 1; font-size: 0.9rem; transition: 0.2s; color: white; }
+        button:active { transform: scale(0.98); }
+        .btn-done { background: var(--accent); color: #00796b; }
+        .btn-plan { background: #ddd; color: #555; }
+        .btn-primary { background: var(--main); width: 100%; }
+        .btn-danger { background: var(--danger); }
+        .btn-outline { background: white; border: 2px solid var(--main); color: var(--main); }
+
+        /* KATEGÓRIA CHIPS (Dinamikus) */
+        .chip-container { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; margin-bottom: 15px; }
+        .chip { background: #eee; padding: 6px 12px; border-radius: 15px; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+        .chip.active { background: var(--main); color: white; }
+        .chip-del { font-size: 0.8rem; opacity: 0.6; padding: 0 4px; }
+        
+        /* NAVBAR */
+        nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #eee; display: flex; height: 70px; z-index: 1000; padding-bottom: env(safe-area-inset-bottom); }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #aaa; font-size: 0.75rem; }
+        .nav-item.active { color: var(--main); font-weight: bold; }
+        .nav-icon { font-size: 1.5rem; margin-bottom: 4px; }
+
+        /* STATISZTIKA */
+        .stat-bar { height: 20px; background: #eee; border-radius: 10px; overflow: hidden; margin: 20px 0; display: flex; }
+        .stat-fill { height: 100%; background: var(--accent); transition: width 0.5s; }
+
+        @keyframes fadein { from { opacity:0; transform: translateY(5px); } to { opacity:1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div id="login-screen">
+    <div class="login-box">
+        <h2 style="color:var(--main); margin-top:0;">🏠 Családi Napló</h2>
+        <input type="text" id="family-code" placeholder="Család Kódja (pl. Kovacsék)">
+        <input type="text" id="user-name" placeholder="Te Neved (pl. Apa)">
+        <button class="btn-primary" onclick="login()">Belépés</button>
+        <p style="font-size:0.75rem; color:#888; margin-top:15px;">Közös lista, közös felelősség.</p>
+    </div>
+</div>
+
+<div id="app" style="display:none;">
+    <header>
+        <h1>Mai Teendők</h1>
+        <div class="user-badge" id="display-user"></div>
+    </header>
+
+    <div class="container">
+        <div id="tab-today" class="tab-content active">
+            <div id="today-date" style="text-align:center; color:#888; margin-bottom:15px; font-size:0.9rem;"></div>
+            
+            <div class="stat-bar">
+                <div id="daily-progress" class="stat-fill" style="width: 0%"></div>
+            </div>
+            
+            <div id="task-list"></div>
+            
+            <div id="empty-msg" style="text-align:center; color:#aaa; margin-top:50px; display:none;">
+                <h2>☀️</h2>
+                <p>Mára minden kész!</p>
+            </div>
+            
+            <button onclick="checkAndGenerateDaily()" style="margin-top:30px; background:none; color:#aaa; font-size:0.8rem; width:100%;">🔄 Lista frissítése</button>
+        </div>
+
+        <div id="tab-summary" class="tab-content">
+            <div class="card">
+                <h3>📊 Heti Összesítő</h3>
+                <p style="font-size:0.9rem; color:#666;">Itt látható, hogyan halad a család a feladatokkal.</p>
+                
+                <div style="display:flex; justify-content:space-around; text-align:center; margin: 20px 0;">
+                    <div>
+                        <div style="font-size:1.5rem; font-weight:bold; color:var(--main);" id="stat-total">0</div>
+                        <div style="font-size:0.8rem;">Feladat</div>
+                    </div>
+                    <div>
+                        <div style="font-size:1.5rem; font-weight:bold; color:var(--accent);" id="stat-done">0</div>
+                        <div style="font-size:0.8rem;">Elvégezve</div>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Legutóbbi aktivitások</h3>
+            <div id="history-list"></div>
+        </div>
+
+        <div id="tab-settings" class="tab-content">
+            <div class="card">
+                <h3 style="margin-top:0;">➕ Új feladat definiálása</h3>
+                
+                <label style="font-size:0.85rem; font-weight:bold;">Feladat Neve</label>
+                <input type="text" id="new-name" placeholder="pl. Viráglocsolás" style="width:100%; padding:10px; margin-bottom:15px; border:1px solid #ddd; border-radius:5px;">
+
+                <label style="font-size:0.85rem; font-weight:bold;">Kategória (Válassz vagy írj újat)</label>
+                <input type="text" id="new-cat" placeholder="pl. Kert, Konyha..." oninput="filterCats()" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px;">
+                <div id="cat-chips" class="chip-container"></div> <label style="font-size:0.85rem; font-weight:bold;">Gyakoriság</label>
+                <select id="new-freq" style="width:100%; padding:10px; margin-bottom:20px; border:1px solid #ddd; border-radius:5px;">
+                    <option value="daily">Minden nap</option>
+                    <option value="weekly">Hetente 1x (Hétvégén)</option>
+                    <option value="interval">2-3 naponta (Intervallum)</option>
+                </select>
+
+                <button class="btn-primary" onclick="addNewTask()">Hozzáadás</button>
+            </div>
+
+            <h3>Mentett Feladatok</h3>
+            <div id="manage-list"></div>
+        </div>
+    </div>
+</div>
+
+<nav id="navbar" style="display:none;">
+    <div class="nav-item active" onclick="switchTab('tab-today', this)">
+        <span class="nav-icon">📅</span> Ma
+    </div>
+    <div class="nav-item" onclick="switchTab('tab-summary', this)">
+        <span class="nav-icon">📈</span> Összesítő
+    </div>
+    <div class="nav-item" onclick="switchTab('tab-settings', this)">
+        <span class="nav-icon">⚙️</span> Feladatok
+    </div>
+</nav>
+
+<script>
+    // --- 1. FIREBASE CONFIG ---
+    // Ide másold be a Firebase Console-ból kapott configot!
+    const firebaseConfig = {
+        apiKey: "IDE_MASOLD_AZ_API_KEYT",
+        authDomain: "PROJEKTNEV.firebaseapp.com",
+        projectId: "PROJEKTNEV",
+        storageBucket: "PROJEKTNEV.appspot.com",
+        messagingSenderId: "...",
+        appId: "..."
+    };
+
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // --- 2. ÁLLAPOT ---
+    let state = {
+        famId: localStorage.getItem('famId') || '',
+        user: localStorage.getItem('user') || '',
+        tasks: [], // Definíciók
+        daily: [], // Mai konkrét teendők
+        categories: [], // Dinamikus kategória lista
+        todayStr: new Date().toISOString().split('T')[0]
+    };
+
+    // --- 3. LOGIN & INIT ---
+    if(state.famId && state.user) startApp();
+
+    function login() {
+        const f = document.getElementById('family-code').value.trim();
+        const u = document.getElementById('user-name').value.trim();
+        if(!f || !u) return alert("Kérlek tölts ki mindent!");
+        
+        state.famId = f; state.user = u;
+        localStorage.setItem('famId', f); localStorage.setItem('user', u);
+        startApp();
+    }
+
+    function startApp() {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+        document.getElementById('navbar').style.display = 'flex';
+        document.getElementById('display-user').innerText = state.user;
+        document.getElementById('today-date').innerText = new Date().toLocaleDateString('hu-HU', {weekday:'long', month:'long', day:'numeric'});
+        
+        setupListeners();
+    }
+
+    function setupListeners() {
+        const famRef = db.collection('families').doc(state.famId);
+
+        // 1. KATEGÓRIÁK betöltése (Settings dokumentumból)
+        famRef.collection('meta').doc('settings').onSnapshot(doc => {
+            if(doc.exists) {
+                state.categories = doc.data().categories || [];
+                renderCategoryChips();
+            } else {
+                // Ha még nincs, létrehozzuk üresen
+                famRef.collection('meta').doc('settings').set({ categories: [] });
+            }
+        });
+
+        // 2. FELADATOK (Definíciók)
+        famRef.collection('tasks').onSnapshot(snap => {
+            state.tasks = [];
+            snap.forEach(d => state.tasks.push({id: d.id, ...d.data()}));
+            renderManageList();
+            checkAndGenerateDaily(); // Ha változott a lista, ellenőrizzük a mait
+        });
+
+        // 3. MAI NAP
+        famRef.collection('daily').doc(state.todayStr).onSnapshot(doc => {
+            if(doc.exists) {
+                state.daily = doc.data().items || [];
+                renderToday();
+            } else {
+                checkAndGenerateDaily();
+            }
+        });
+
+        // 4. ÖSSZESÍTŐ (History)
+        famRef.collection('history').orderBy('ts', 'desc').limit(20).onSnapshot(snap => {
+            const list = document.getElementById('history-list');
+            list.innerHTML = '';
+            let countDone = 0;
+            snap.forEach(d => {
+                const val = d.data();
+                countDone++;
+                const date = val.ts ? val.ts.toDate().toLocaleDateString('hu-HU', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) : '';
+                list.innerHTML += `
+                    <div style="padding:10px; border-bottom:1px solid #eee; font-size:0.9rem;">
+                        <span style="font-weight:bold;">${val.task}</span> <span style="color:#888;">- ${date}</span><br>
+                        <span style="color:var(--accent); font-weight:bold;">✔ ${val.user}</span>
+                    </div>
+                `;
+            });
+            // Update stats
+            document.getElementById('stat-done').innerText = countDone; // Ez csak az utolsó 20, de demónak jó
+        });
+    }
+
+    // --- 4. MAI LISTA GENERÁLÁSA & MEGJELENÍTÉSE ---
+    async function checkAndGenerateDaily() {
+        if(state.tasks.length === 0) return;
+        const ref = db.collection('families').doc(state.famId).collection('daily').doc(state.todayStr);
+        
+        try {
+            const doc = await ref.get();
+            if(!doc.exists) {
+                // Generálás
+                let items = [];
+                state.tasks.forEach(t => {
+                    // Egyszerűsített logika: Minden megjelenik, de beállítható lenne nap szerint is
+                    items.push({
+                        taskId: t.id,
+                        name: t.name,
+                        cat: t.cat || 'Egyéb',
+                        status: 'todo', // todo, done
+                        plannedBy: null, // "Apa"
+                        plannedTime: null // "12:00"
+                    });
+                });
+                await ref.set({ items });
+            }
+        } catch(e) { console.error(e); }
+    }
+
+    function renderToday() {
+        const list = document.getElementById('task-list');
+        list.innerHTML = '';
+        let total = state.daily.length;
+        let done = 0;
+
+        state.daily.forEach((item, idx) => {
+            const isDone = item.status === 'done';
+            if(isDone) done++;
+            
+            let statusClass = isDone ? 'status-done' : (item.plannedBy ? 'status-planned' : 'status-todo');
+            let planInfo = item.plannedBy ? `<div class="plan-info">✋ ${item.plannedBy} vállalta ${item.plannedTime ? 'ekkora: '+item.plannedTime : ''}</div>` : '';
+            
+            // Gombok
+            let buttons = '';
+            if(!isDone) {
+                buttons = `
+                    <div class="btn-row">
+                        <button class="btn-plan" onclick="planTask(${idx})">${item.plannedBy ? 'Módosít' : '✋ Vállalom'}</button>
+                        <button class="btn-done" onclick="finishTask(${idx})">✔ Kész</button>
+                    </div>
+                `;
+            } else {
+                buttons = `<div style="margin-top:10px; color:var(--accent); font-weight:bold;">✅ Elvégezte: ${item.doneBy}</div>`;
+            }
+
+            list.innerHTML += `
+                <div class="card ${statusClass}">
+                    <div class="task-header">
+                        <div class="task-name">${item.name}</div>
+                        <div class="task-cat">${item.cat}</div>
+                    </div>
+                    ${planInfo}
+                    ${buttons}
+                </div>
+            `;
+        });
+
+        // Progress bar update
+        const pct = total > 0 ? (done / total) * 100 : 0;
+        document.getElementById('daily-progress').style.width = pct + "%";
+        document.getElementById('empty-msg').style.display = (total > 0 && done === total) ? 'block' : 'none';
+        document.getElementById('stat-total').innerText = total; // Summary fülhöz
+    }
+
+    // --- 5. INTERAKCIÓK (Vállalás, Kész) ---
+    function planTask(idx) {
+        const time = prompt("Mikorra tervezed megcsinálni? (Pl. 14:00, vagy hagyd üresen)");
+        if(time === null) return; // Mégse
+
+        state.daily[idx].plannedBy = state.user;
+        state.daily[idx].plannedTime = time;
+        
+        saveDaily();
+    }
+
+    function finishTask(idx) {
+        state.daily[idx].status = 'done';
+        state.daily[idx].doneBy = state.user;
+        saveDaily();
+
+        // History írása
+        db.collection('families').doc(state.famId).collection('history').add({
+            task: state.daily[idx].name,
+            user: state.user,
+            ts: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    }
+
+    function saveDaily() {
+        db.collection('families').doc(state.famId).collection('daily').doc(state.todayStr).update({ items: state.daily });
+    }
+
+    // --- 6. BEÁLLÍTÁSOK & KATEGÓRIÁK ---
+    
+    // Kategória Chips kirajzolása
+    function renderCategoryChips() {
+        const container = document.getElementById('cat-chips');
+        container.innerHTML = '';
+        state.categories.forEach(cat => {
+            container.innerHTML += `
+                <div class="chip" onclick="selectCat('${cat}')">
+                    ${cat} 
+                    <span class="chip-del" onclick="deleteCat('${cat}', event)">✖</span>
+                </div>
+            `;
+        });
+    }
+
+    function selectCat(cat) {
+        document.getElementById('new-cat').value = cat;
+    }
+
+    function filterCats() {
+        // Itt lehetne szűrni a chipeket, de most hagyjuk mindet láthatóan
+    }
+
+    function deleteCat(cat, e) {
+        e.stopPropagation(); // Hogy ne válassza ki közben
+        if(confirm(`Törlöd a "${cat}" kategóriát a listából? (A régi feladatoknál megmarad)`)) {
+            const newCats = state.categories.filter(c => c !== cat);
+            db.collection('families').doc(state.famId).collection('meta').doc('settings').update({ categories: newCats });
+        }
+    }
+
+    function addNewTask() {
+        const name = document.getElementById('new-name').value;
+        const cat = document.getElementById('new-cat').value.trim(); // Amit beírt
+        const freq = document.getElementById('new-freq').value;
+
+        if(!name) return alert("Adj nevet a feladatnak!");
+
+        // 1. Ha új kategória, elmentjük a listába
+        if(cat && !state.categories.includes(cat)) {
+            const newCats = [...state.categories, cat].sort();
+            db.collection('families').doc(state.famId).collection('meta').doc('settings').update({ categories: newCats });
+        }
+
+        // 2. Feladat mentése
+        db.collection('families').doc(state.famId).collection('tasks').add({
+            name, cat, freq
+        }).then(() => {
+            alert("Feladat hozzáadva!");
+            document.getElementById('new-name').value = '';
+            document.getElementById('new-cat').value = '';
+        });
+    }
+
+    function deleteTask(id) {
+        if(confirm("Törlöd ezt a feladatot végleg?")) {
+            db.collection('families').doc(state.famId).collection('tasks').doc(id).delete();
+        }
+    }
+
+    function renderManageList() {
+        const div = document.getElementById('manage-list');
+        div.innerHTML = '';
+        state.tasks.forEach(t => {
+            div.innerHTML += `
+                <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div class="task-name">${t.name}</div>
+                        <div class="task-cat">${t.cat || '-'}</div>
+                    </div>
+                    <button class="btn-danger" style="flex:0; padding:5px 10px;" onclick="deleteTask('${t.id}')">Törlés</button>
+                </div>
+            `;
+        });
+    }
+
+    window.switchTab = function(id, el) {
+        document.querySelectorAll('.tab-content').forEach(x => x.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
+        el.classList.add('active');
+    }
+</script>
+</body>
+</html>
