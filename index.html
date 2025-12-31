@@ -17,7 +17,7 @@
         .login-box { background: white; padding: 20px; border-radius: 10px; width: 85%; max-width: 320px; text-align: center; color: #333; box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
         .login-box input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; font-size: 1rem; }
         
-        /* HEADER - ÚJ: Flexbox igazítás a kód megjelenítéséhez */
+        /* HEADER */
         header { background: white; padding: 10px 15px; position: sticky; top:0; z-index:100; box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
         .header-left { display: flex; flex-direction: column; }
         h1 { margin: 0; font-size: 1.2rem; color: var(--main); line-height: 1.2; }
@@ -162,34 +162,61 @@
 
                 <label>Gyakoriság Típusa</label>
                 <select id="freq-type" onchange="renderFreqOptions()">
-                    <option value="daily">Napi / Heti rendszeres</option>
-                    <option value="monthly_date">Havi fix napon (pl. 12-én)</option>
-                    <option value="monthly_pos">Havi minta (pl. Első Hétfő)</option>
+                    <option value="every_day">Minden nap</option>
+                    <option value="weekly_days">Heti konkrét napok (pl. H, Sze)</option>
+                    <option value="interval_week">Hetente (Ciklikus: Minden X. héten)</option>
+                    <option value="monthly_fix">Havi fix napon (pl. 12-én)</option>
+                    <option value="interval_month">Havonta (Ciklikus: Minden X. hónapban)</option>
+                    <option value="monthly_pattern">Havi minta (pl. Első Hétfő)</option>
                 </select>
 
-                <div id="opt-daily" style="display:block;">
+                <div id="opt-weekly-days" style="display:none;">
                     <div class="week-selector">
-                        <div class="day-btn" onclick="toggleDay(this, 1)">H</div>
-                        <div class="day-btn" onclick="toggleDay(this, 2)">K</div>
-                        <div class="day-btn" onclick="toggleDay(this, 3)">Sz</div>
-                        <div class="day-btn" onclick="toggleDay(this, 4)">Cs</div>
-                        <div class="day-btn" onclick="toggleDay(this, 5)">P</div>
-                        <div class="day-btn" onclick="toggleDay(this, 6)">Sz</div>
-                        <div class="day-btn" onclick="toggleDay(this, 0)">V</div>
+                        <div class="day-btn" onclick="toggleDay(this)">H</div>
+                        <div class="day-btn" onclick="toggleDay(this)">K</div>
+                        <div class="day-btn" onclick="toggleDay(this)">Sz</div>
+                        <div class="day-btn" onclick="toggleDay(this)">Cs</div>
+                        <div class="day-btn" onclick="toggleDay(this)">P</div>
+                        <div class="day-btn" onclick="toggleDay(this)">Sz</div>
+                        <div class="day-btn" onclick="toggleDay(this)">V</div>
                     </div>
                 </div>
 
-                <div id="opt-monthly-date" style="display:none;">
+                <div id="opt-interval-week" style="display:none;">
+                    <label>Milyen gyakran?</label>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span>Minden</span>
+                        <input type="number" id="interval-week-num" value="2" min="1" style="width:60px; margin-bottom:0;">
+                        <span>. héten.</span>
+                    </div>
+                    <div style="font-size:0.75rem; color:#888; margin-top:5px; margin-bottom:10px;">
+                        (A mai naptól számítva.)
+                    </div>
+                </div>
+
+                <div id="opt-monthly-fix" style="display:none;">
                     <label>A hónap melyik napján?</label>
                     <div style="display:flex; gap:10px; align-items:center;">
                         <input type="number" id="month-day-fix" min="1" max="31" value="10">. napján
                     </div>
-                    <div style="font-size:0.8rem; color:#888; margin-top:-5px; margin-bottom:10px;">
+                    <div style="font-size:0.75rem; color:#888; margin-top:-5px; margin-bottom:10px;">
                         (Pl. befizetésekhez: 10-e körül)
                     </div>
                 </div>
 
-                <div id="opt-monthly-pos" style="display:none;">
+                <div id="opt-interval-month" style="display:none;">
+                    <label>Milyen gyakran?</label>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span>Minden</span>
+                        <input type="number" id="interval-month-num" value="3" min="1" style="width:60px; margin-bottom:0;">
+                        <span>. hónapban.</span>
+                    </div>
+                    <div style="font-size:0.75rem; color:#888; margin-top:5px; margin-bottom:10px;">
+                        (A mai nappal egyező napon, pl. ha ma 12-e van, akkor 12-én.)
+                    </div>
+                </div>
+
+                <div id="opt-monthly-pattern" style="display:none;">
                     <label>Mikor?</label>
                     <div style="display:flex; gap:5px;">
                         <select id="month-pos-num">
@@ -208,9 +235,6 @@
                             <option value="6">Szombat</option>
                             <option value="0">Vasárnap</option>
                         </select>
-                    </div>
-                    <div style="font-size:0.8rem; color:#888; margin-top:5px; margin-bottom:10px;">
-                        (Pl. Iskolai csomag: Havi Első Hétfő)
                     </div>
                 </div>
 
@@ -297,6 +321,7 @@
         
         updateDateDisplay();
         setupListeners();
+        renderFreqOptions(); // Init UI state
     }
     
     // Dátum formázás és léptetés
@@ -363,7 +388,7 @@
         });
     }
 
-    // --- 4. GENERÁLÁS LOGIKA ---
+    // --- 4. GENERÁLÁS LOGIKA (ÚJ) ---
     async function checkAndGenerateDaily() {
         if(state.tasks.length === 0) return;
         
@@ -373,21 +398,63 @@
             const doc = await ref.get();
             if(!doc.exists) {
                 let items = [];
-                const checkDate = state.currentDateObj; // A kiválasztott dátum
+                const checkDate = new Date(state.currentDateObj);
+                checkDate.setHours(0,0,0,0); // Idő nullázása a pontos számításhoz
+                
                 const dayOfWeek = checkDate.getDay(); 
                 const dateNum = checkDate.getDate();
 
                 state.tasks.forEach(t => {
                     let isDue = false;
 
-                    if (t.freqType === 'daily') {
+                    // 1. Minden Nap
+                    if (t.freqType === 'every_day') {
+                        isDue = true;
+                    }
+
+                    // 2. Heti konkrét napok (H, K, Sze...)
+                    else if (t.freqType === 'weekly_days') {
                         if (t.days && t.days.includes(dayOfWeek)) isDue = true;
-                        if (!t.days || t.days.length === 0) isDue = true; 
                     } 
-                    else if (t.freqType === 'monthly_date') {
+                    
+                    // 3. Ciklikus hét (Minden X. héten)
+                    else if (t.freqType === 'interval_week') {
+                        const start = new Date(t.startDate);
+                        start.setHours(0,0,0,0);
+                        const oneDay = 24 * 60 * 60 * 1000;
+                        const diffDays = Math.round((checkDate - start) / oneDay);
+                        
+                        // Ha a napok száma osztható (intervallum * 7)-tel, akkor aznap esedékes
+                        if (diffDays >= 0 && diffDays % (t.interval * 7) === 0) {
+                            isDue = true;
+                        }
+                    }
+
+                    // 4. Havi fix (pl. 10-én)
+                    else if (t.freqType === 'monthly_fix') {
                         if (dateNum == t.monthDay) isDue = true;
                     }
-                    else if (t.freqType === 'monthly_pos') {
+
+                    // 5. Ciklikus hónap (Minden X. hónapban)
+                    else if (t.freqType === 'interval_month') {
+                        const start = new Date(t.startDate);
+                        start.setHours(0,0,0,0);
+                        
+                        // Csak akkor esedékes, ha a nap (pl. 12.) egyezik
+                        if (dateNum === start.getDate()) {
+                            // Hónap különbség számítása
+                            let months = (checkDate.getFullYear() - start.getFullYear()) * 12;
+                            months -= start.getMonth();
+                            months += checkDate.getMonth();
+                            
+                            if (months >= 0 && months % t.interval === 0) {
+                                isDue = true;
+                            }
+                        }
+                    }
+
+                    // 6. Havi minta (pl. első hétfő)
+                    else if (t.freqType === 'monthly_pattern') {
                         if (dayOfWeek == t.posDay) {
                              const weekNum = Math.ceil(dateNum / 7);
                              if (weekNum == t.posNum) isDue = true;
@@ -416,8 +483,11 @@
     }
     
     function describeFreq(t) {
-        if(t.freqType === 'monthly_date') return `📅 Havi ${t.monthDay}. napján`;
-        if(t.freqType === 'monthly_pos') return `📅 Havi ismétlődő`;
+        if(t.freqType === 'every_day') return 'Minden nap';
+        if(t.freqType === 'interval_week') return `Minden ${t.interval}. héten`;
+        if(t.freqType === 'interval_month') return `Minden ${t.interval}. hónapban`;
+        if(t.freqType === 'monthly_fix') return `📅 Havi ${t.monthDay}. napján`;
+        if(t.freqType === 'monthly_pattern') return `📅 Havi ismétlődő`;
         return '';
     }
 
@@ -499,15 +569,18 @@
 
     function saveDaily() { db.collection('families').doc(state.famId).collection('daily').doc(state.todayStr).update({ items: state.daily }); }
 
-    // --- 6. BEÁLLÍTÁSOK LOGIKA ---
+    // --- 6. BEÁLLÍTÁSOK LOGIKA (ÚJ) ---
     function renderFreqOptions() {
         const type = document.getElementById('freq-type').value;
-        document.getElementById('opt-daily').style.display = (type === 'daily') ? 'block' : 'none';
-        document.getElementById('opt-monthly-date').style.display = (type === 'monthly_date') ? 'block' : 'none';
-        document.getElementById('opt-monthly-pos').style.display = (type === 'monthly_pos') ? 'block' : 'none';
+        
+        document.getElementById('opt-weekly-days').style.display = (type === 'weekly_days') ? 'block' : 'none';
+        document.getElementById('opt-interval-week').style.display = (type === 'interval_week') ? 'block' : 'none';
+        document.getElementById('opt-monthly-fix').style.display = (type === 'monthly_fix') ? 'block' : 'none';
+        document.getElementById('opt-interval-month').style.display = (type === 'interval_month') ? 'block' : 'none';
+        document.getElementById('opt-monthly-pattern').style.display = (type === 'monthly_pattern') ? 'block' : 'none';
     }
     
-    function toggleDay(el, d) {
+    function toggleDay(el) {
         el.classList.toggle('selected');
     }
 
@@ -518,11 +591,18 @@
         
         if(!name) return alert("Név kötelező!");
 
-        let taskObj = { name, cat, freqType: type };
+        let taskObj = { 
+            name, 
+            cat, 
+            freqType: type,
+            created: new Date().toISOString(),
+            startDate: new Date().toISOString() // Ciklusokhoz kezdőpont
+        };
 
-        if (type === 'daily') {
+        // Adatgyűjtés típus szerint
+        if (type === 'weekly_days') {
             let days = [];
-            document.querySelectorAll('.day-btn.selected').forEach(el => {
+            document.querySelectorAll('#opt-weekly-days .day-btn.selected').forEach(el => {
                 const txt = el.innerText;
                 if(txt=='V') days.push(0); if(txt=='H') days.push(1); if(txt=='K') days.push(2);
                 if(txt=='Sz') days.push(3); if(txt=='Cs') days.push(4); if(txt=='P') days.push(5); if(txt=='Szo') days.push(6);
@@ -530,10 +610,20 @@
             if(days.length === 0) return alert("Válassz legalább egy napot!");
             taskObj.days = days;
         } 
-        else if (type === 'monthly_date') {
+        else if (type === 'interval_week') {
+            const val = parseInt(document.getElementById('interval-week-num').value);
+            if(!val || val < 1) return alert("Helytelen hét szám!");
+            taskObj.interval = val;
+        }
+        else if (type === 'monthly_fix') {
             taskObj.monthDay = parseInt(document.getElementById('month-day-fix').value);
         }
-        else if (type === 'monthly_pos') {
+        else if (type === 'interval_month') {
+             const val = parseInt(document.getElementById('interval-month-num').value);
+            if(!val || val < 1) return alert("Helytelen hónap szám!");
+            taskObj.interval = val;
+        }
+        else if (type === 'monthly_pattern') {
             taskObj.posNum = parseInt(document.getElementById('month-pos-num').value);
             taskObj.posDay = parseInt(document.getElementById('month-pos-day').value);
         }
@@ -565,10 +655,7 @@
     function renderManageList() {
         const div = document.getElementById('manage-list'); div.innerHTML = '';
         state.tasks.forEach(t => {
-            let info = '';
-            if(t.freqType === 'daily') info = 'Napi/Heti';
-            if(t.freqType === 'monthly_date') info = `Havi ${t.monthDay}. nap`;
-            if(t.freqType === 'monthly_pos') info = `Havi minta`;
+            let info = describeFreq(t);
             div.innerHTML += `<div class="card" style="display:flex; justify-content:space-between; align-items:center;"><div><div class="task-name">${t.name}</div><div class="task-detail">${t.cat} | ${info}</div></div><button class="btn-danger" style="flex:0; padding:5px 12px;" onclick="if(confirm('Törlöd?')) db.collection('families').doc(state.famId).collection('tasks').doc('${t.id}').delete()">Törlés</button></div>`;
         });
     }
