@@ -128,7 +128,7 @@
                 <p>Mára minden kész!</p>
             </div>
             
-            <button onclick="checkAndGenerateDaily()" style="margin-top:30px; background:none; color:#aaa; font-size:0.8rem; width:100%;">🔄 Lista frissítése erre a napra</button>
+            <button onclick="checkAndGenerateDaily(true)" style="margin-top:30px; background:none; color:#aaa; font-size:0.8rem; width:100%;">🔄 Új feladatok keresése (Frissítés)</button>
         </div>
 
         <div id="tab-summary" class="tab-content">
@@ -347,11 +347,12 @@
         });
 
         // FELADAT DEFINÍCIÓK
+        // Itt javítottuk a hibát: ha változik a feladat lista, újraellenőrizzük a mait
         famRef.collection('tasks').onSnapshot(snap => {
             state.tasks = [];
             snap.forEach(d => state.tasks.push({id: d.id, ...d.data()}));
             renderManageList();
-            checkAndGenerateDaily(); // Ha betöltődtek a definíciók, generáljunk ha kell
+            checkAndGenerateDaily(); 
         });
         
         // Napi listener elindítása
@@ -388,97 +389,106 @@
         });
     }
 
-    // --- 4. GENERÁLÁS LOGIKA (ÚJ) ---
-    async function checkAndGenerateDaily() {
+    // --- 4. JAVÍTOTT GENERÁLÁS LOGIKA (OKOS FRISSÍTÉS) ---
+    async function checkAndGenerateDaily(forceNotify = false) {
         if(state.tasks.length === 0) return;
         
         const ref = db.collection('families').doc(state.famId).collection('daily').doc(state.todayStr);
         
         try {
             const doc = await ref.get();
-            if(!doc.exists) {
-                let items = [];
-                const checkDate = new Date(state.currentDateObj);
-                checkDate.setHours(0,0,0,0); // Idő nullázása a pontos számításhoz
+            // JAVÍTÁS: Nem csak akkor futunk, ha NEM létezik, hanem mindig megnézzük, kell-e bővíteni
+            let currentItems = doc.exists ? (doc.data().items || []) : [];
+            let itemsChanged = false;
+            
+            const checkDate = new Date(state.currentDateObj);
+            checkDate.setHours(0,0,0,0);
+            
+            const dayOfWeek = checkDate.getDay(); 
+            const dateNum = checkDate.getDate();
+
+            state.tasks.forEach(t => {
+                // Ellenőrizzük, hogy ez a feladat már benne van-e a mai listában
+                const alreadyExists = currentItems.some(item => item.taskId === t.id);
+                if (alreadyExists) return; // Ha már benne van, ugrunk
+
+                let isDue = false;
+
+                // 1. Minden Nap
+                if (t.freqType === 'every_day') {
+                    isDue = true;
+                }
+
+                // 2. Heti konkrét napok
+                else if (t.freqType === 'weekly_days') {
+                    if (t.days && t.days.includes(dayOfWeek)) isDue = true;
+                } 
                 
-                const dayOfWeek = checkDate.getDay(); 
-                const dateNum = checkDate.getDate();
-
-                state.tasks.forEach(t => {
-                    let isDue = false;
-
-                    // 1. Minden Nap
-                    if (t.freqType === 'every_day') {
+                // 3. Ciklikus hét
+                else if (t.freqType === 'interval_week') {
+                    const start = new Date(t.startDate);
+                    start.setHours(0,0,0,0);
+                    const oneDay = 24 * 60 * 60 * 1000;
+                    const diffDays = Math.round((checkDate - start) / oneDay);
+                    
+                    if (diffDays >= 0 && diffDays % (t.interval * 7) === 0) {
                         isDue = true;
                     }
+                }
 
-                    // 2. Heti konkrét napok (H, K, Sze...)
-                    else if (t.freqType === 'weekly_days') {
-                        if (t.days && t.days.includes(dayOfWeek)) isDue = true;
-                    } 
-                    
-                    // 3. Ciklikus hét (Minden X. héten)
-                    else if (t.freqType === 'interval_week') {
-                        const start = new Date(t.startDate);
-                        start.setHours(0,0,0,0);
-                        const oneDay = 24 * 60 * 60 * 1000;
-                        const diffDays = Math.round((checkDate - start) / oneDay);
-                        
-                        // Ha a napok száma osztható (intervallum * 7)-tel, akkor aznap esedékes
-                        if (diffDays >= 0 && diffDays % (t.interval * 7) === 0) {
+                // 4. Havi fix
+                else if (t.freqType === 'monthly_fix') {
+                    if (dateNum == t.monthDay) isDue = true;
+                }
+
+                // 5. Ciklikus hónap
+                else if (t.freqType === 'interval_month') {
+                    const start = new Date(t.startDate);
+                    start.setHours(0,0,0,0);
+                    if (dateNum === start.getDate()) {
+                        let months = (checkDate.getFullYear() - start.getFullYear()) * 12;
+                        months -= start.getMonth();
+                        months += checkDate.getMonth();
+                        if (months >= 0 && months % t.interval === 0) {
                             isDue = true;
                         }
                     }
+                }
 
-                    // 4. Havi fix (pl. 10-én)
-                    else if (t.freqType === 'monthly_fix') {
-                        if (dateNum == t.monthDay) isDue = true;
-                    }
-
-                    // 5. Ciklikus hónap (Minden X. hónapban)
-                    else if (t.freqType === 'interval_month') {
-                        const start = new Date(t.startDate);
-                        start.setHours(0,0,0,0);
-                        
-                        // Csak akkor esedékes, ha a nap (pl. 12.) egyezik
-                        if (dateNum === start.getDate()) {
-                            // Hónap különbség számítása
-                            let months = (checkDate.getFullYear() - start.getFullYear()) * 12;
-                            months -= start.getMonth();
-                            months += checkDate.getMonth();
-                            
-                            if (months >= 0 && months % t.interval === 0) {
-                                isDue = true;
+                // 6. Havi minta
+                else if (t.freqType === 'monthly_pattern') {
+                    if (dayOfWeek == t.posDay) {
+                            const weekNum = Math.ceil(dateNum / 7);
+                            if (weekNum == t.posNum) isDue = true;
+                            if (t.posNum == -1) {
+                                const daysInMonth = new Date(checkDate.getFullYear(), checkDate.getMonth()+1, 0).getDate();
+                                if (dateNum + 7 > daysInMonth) isDue = true;
                             }
-                        }
                     }
+                }
 
-                    // 6. Havi minta (pl. első hétfő)
-                    else if (t.freqType === 'monthly_pattern') {
-                        if (dayOfWeek == t.posDay) {
-                             const weekNum = Math.ceil(dateNum / 7);
-                             if (weekNum == t.posNum) isDue = true;
-                             if (t.posNum == -1) {
-                                 const daysInMonth = new Date(checkDate.getFullYear(), checkDate.getMonth()+1, 0).getDate();
-                                 if (dateNum + 7 > daysInMonth) isDue = true;
-                             }
-                        }
-                    }
+                if (isDue) {
+                    // Ha esedékes és még nem volt a listán -> Hozzáadjuk
+                    currentItems.push({
+                        taskId: t.id,
+                        name: t.name,
+                        cat: t.cat || 'Egyéb',
+                        status: 'todo',
+                        desc: describeFreq(t),
+                        plannedBy: null,
+                        plannedTime: null
+                    });
+                    itemsChanged = true;
+                }
+            });
 
-                    if (isDue) {
-                        items.push({
-                            taskId: t.id,
-                            name: t.name,
-                            cat: t.cat || 'Egyéb',
-                            status: 'todo',
-                            desc: describeFreq(t),
-                            plannedBy: null,
-                            plannedTime: null
-                        });
-                    }
-                });
-                await ref.set({ items });
+            if (itemsChanged) {
+                await ref.set({ items: currentItems }, { merge: true });
+                if(forceNotify) alert("Lista frissítve új feladatokkal!");
+            } else if (forceNotify) {
+                alert("Nincs új hozzáadandó feladat mára.");
             }
+
         } catch(e) { console.error(e); }
     }
     
@@ -494,10 +504,9 @@
     function renderToday() {
         const list = document.getElementById('task-list'); list.innerHTML = '';
         let done = 0;
-        let totalRelevant = 0; // Csak a nem skippelt feladatokat számoljuk
+        let totalRelevant = 0; 
 
         state.daily.forEach((item, idx) => {
-            // Ha skippelt, nem számít bele a totálba
             if (item.status !== 'skipped') {
                 totalRelevant++;
                 if (item.status === 'done') done++;
@@ -510,7 +519,6 @@
 
             let planInfo = item.plannedBy ? `<div class="plan-info">✋ ${item.plannedBy} vállalta ${item.plannedTime ? 'ekkora: '+item.plannedTime : ''}</div>` : '';
             
-            // GOMBOK GENERÁLÁSA
             let btns = '';
             
             if (item.status === 'done') {
@@ -531,12 +539,9 @@
             list.innerHTML += `<div class="card ${statusClass}"><div class="task-header"><div><div class="task-cat">${item.cat}</div><div class="task-name">${item.name}</div><div class="task-detail">${item.desc || ''}</div></div></div>${planInfo}${btns}</div>`;
         });
 
-        // STATISZTIKA FRISSÍTÉSE
         const pct = totalRelevant > 0 ? (done / totalRelevant) * 100 : (state.daily.length > 0 && totalRelevant === 0 ? 100 : 0);
-        
         document.getElementById('daily-progress').style.width = pct + "%";
         
-        // Üres üzenet
         const allDoneOrSkipped = state.daily.every(i => i.status === 'done' || i.status === 'skipped');
         document.getElementById('empty-msg').style.display = (state.daily.length > 0 && allDoneOrSkipped) ? 'block' : 'none';
         
@@ -569,7 +574,7 @@
 
     function saveDaily() { db.collection('families').doc(state.famId).collection('daily').doc(state.todayStr).update({ items: state.daily }); }
 
-    // --- 6. BEÁLLÍTÁSOK LOGIKA (ÚJ) ---
+    // --- 6. BEÁLLÍTÁSOK LOGIKA ---
     function renderFreqOptions() {
         const type = document.getElementById('freq-type').value;
         
@@ -596,10 +601,9 @@
             cat, 
             freqType: type,
             created: new Date().toISOString(),
-            startDate: new Date().toISOString() // Ciklusokhoz kezdőpont
+            startDate: new Date().toISOString()
         };
 
-        // Adatgyűjtés típus szerint
         if (type === 'weekly_days') {
             let days = [];
             document.querySelectorAll('#opt-weekly-days .day-btn.selected').forEach(el => {
@@ -628,7 +632,6 @@
             taskObj.posDay = parseInt(document.getElementById('month-pos-day').value);
         }
 
-        // Kategória mentés
         if(cat && !state.categories.includes(cat)) {
             const newCats = [...state.categories, cat].sort();
             db.collection('families').doc(state.famId).collection('meta').doc('settings').update({ categories: newCats });
@@ -638,6 +641,8 @@
             alert("Siker!");
             document.getElementById('new-name').value = '';
             document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('selected'));
+            // Automatikus frissítés triggerelése
+            checkAndGenerateDaily();
         });
     }
 
