@@ -10,15 +10,37 @@
         body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; background: var(--bg); color: var(--text); padding-bottom: 80px; user-select: none; }
         
         /* LOGIN */
-        #login-screen { position: fixed; inset: 0; background: var(--main); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; padding: 20px; }
+        #login-screen { position: fixed; inset: 0; background: var(--main); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; padding: 20px; overflow-y: auto; }
         .login-box { background: white; padding: 25px; border-radius: 12px; width: 100%; max-width: 350px; text-align: center; color: #333; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
         .login-box input { width: 100%; padding: 12px; margin: 8px 0; border: 2px solid #eee; border-radius: 8px; font-size: 1rem; box-sizing: border-box; }
         .login-box label { font-size: 0.8rem; color: #888; display: block; text-align: left; margin-top: 10px; }
         
+        /* ÚJ: ÚTMUTATÓ STÍLUS */
+        .intro-steps { background: #f0f3f7; border-radius: 8px; padding: 15px; margin-bottom: 20px; text-align: left; font-size: 0.9rem; line-height: 1.5; }
+        .intro-steps b { color: var(--main); }
+        .step-item { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+        .step-icon { background: var(--main); color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0; margin-top: 2px; }
+
         /* HEADER */
-        header { background: white; padding: 15px; position: sticky; top:0; z-index:100; box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
-        h1 { margin: 0; font-size: 1.2rem; color: var(--main); font-weight: 800; }
-        .sync-badge { font-size: 0.7rem; background: #eee; padding: 3px 8px; border-radius: 10px; color: #555; }
+        header { background: white; padding: 15px; position: sticky; top:0; z-index:100; box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: flex-start; }
+        .header-left { display: flex; flex-direction: column; }
+        h1 { margin: 5px 0 0 0; font-size: 1.2rem; color: var(--text); font-weight: 800; }
+        
+        /* ÚJ: PANTRY ID BADGE STÍLUS */
+        .pantry-id-badge { 
+            background: var(--main); 
+            color: white; 
+            font-family: monospace; 
+            font-size: 0.85rem; 
+            padding: 4px 8px; 
+            border-radius: 6px; 
+            display: inline-block;
+            font-weight: bold;
+            margin-bottom: 2px;
+            box-shadow: 0 2px 5px rgba(108, 92, 231, 0.3);
+        }
+
+        .sync-badge { font-size: 0.7rem; background: #eee; padding: 3px 8px; border-radius: 10px; color: #555; align-self: center; }
         .sync-badge.active { background: #55efc4; color: #006266; }
         
         /* LAYOUT */
@@ -72,15 +94,29 @@
 <div id="login-screen">
     <div class="login-box">
         <h2 style="color:var(--main); margin-top:0;">☁️ Családi Napló</h2>
-        <p style="font-size:0.85rem; color:#666;">Valódi felhő szinkronizálás</p>
         
-        <label>1. Felhasználó neve</label>
-        <input type="text" id="user-name" placeholder="pl. Apa">
+        <div class="intro-steps">
+            <div class="step-item">
+                <div class="step-icon">1</div>
+                <div><b>Egy család = Egy kód.</b> Mindenki ugyanazt a Pantry kódot használja.</div>
+            </div>
+            <div class="step-item">
+                <div class="step-icon">2</div>
+                <div>Ha még nincs, <b>egy valaki</b> kérjen kódot a honlapon.</div>
+            </div>
+            <div class="step-item">
+                <div class="step-icon">3</div>
+                <div>Írjátok be a kódot és a saját neveteket alább.</div>
+            </div>
+        </div>
+
+        <label>Te neved (pl. Apa, Anya)</label>
+        <input type="text" id="user-name" placeholder="Írd be a neved">
         
-        <label>2. Pantry (Éléskamra) ID</label>
-        <input type="text" id="pantry-id" placeholder="Másold ide a kódot a weboldalról">
+        <label>Közös Pantry (Éléskamra) Kód</label>
+        <input type="text" id="pantry-id" placeholder="Másold ide a közös kódot">
         <div style="font-size:0.75rem; color:#888; margin-bottom:10px;">
-            Nincs kódod? <a href="https://pantry.cloud/" target="_blank" style="color:var(--main)">Kérj egyet ingyen itt.</a>
+            Nincs kódod? <a href="https://getpantry.cloud/" target="_blank" style="color:var(--main)">Kérj egyet ingyen itt (getpantry.cloud).</a>
         </div>
 
         <button class="btn-primary" onclick="login()">Belépés</button>
@@ -90,6 +126,7 @@
 <div id="app" style="display:none;">
     <header>
         <div class="header-left">
+            <div id="sticky-pantry-id" class="pantry-id-badge" onclick="alert('Ez a család közös kódja. Ezt írja be a másik családtag is!')">ID: -----</div>
             <h1>Családi Napló</h1>
             <div id="user-display" style="font-size:0.8rem; color:#666;"></div>
         </div>
@@ -164,7 +201,7 @@
                 <h3>ℹ️ Információ</h3>
                 <p>Ez az alkalmazás a <b>Pantry Cloud</b> szolgáltatást használja a szinkronizáláshoz.</p>
                 <p><b>Pantry ID:</b> <span id="display-pantry-id" style="font-family:monospace; background:#eee; padding:2px;"></span></p>
-                <p>Ha másik telefonon is ezt az ID-t adod meg, az adatok automatikusan szinkronizálódnak (kb. 5 másodpercenként).</p>
+                <p>A fenti kódnak minden családtag telefonján egyeznie kell!</p>
                 <button class="btn-danger" style="margin-top:10px;" onclick="forceSync()">🔄 Kényszerített Szinkronizálás MOST</button>
             </div>
         </div>
@@ -178,9 +215,9 @@
 </nav>
 
 <script>
-    // --- KONFIGURÁCIÓ ---
+    // --- KONFIGURÁCIÓ (Javított URL) ---
     const PANTRY_BASE = "https://getpantry.cloud/apiv1/pantry/";
-    const BASKET_NAME = "MyFamilyTasks"; // Ez a "doboz" neve a felhőben
+    const BASKET_NAME = "MyFamilyTasks"; 
 
     // --- ÁLLAPOT ---
     let state = {
@@ -224,7 +261,11 @@
     function startApp() {
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('app').style.display = 'block';
-        document.getElementById('user-display').innerText = state.user;
+        
+        // Adatok kiírása a fejlécbe
+        document.getElementById('user-display').innerText = `👤 ${state.user}`;
+        document.getElementById('sticky-pantry-id').innerText = `ID: ${state.pantryId}`;
+        
         document.getElementById('display-pantry-id').innerText = state.pantryId;
         
         updateDateDisplay();
@@ -340,8 +381,6 @@
         // Ha változott a lista (generáltunk újat), mentsük el a memóriába (és majd a felhőbe)
         if (JSON.stringify(state.dailyLog[todayStr]) !== JSON.stringify(dailyItems)) {
             state.dailyLog[todayStr] = dailyItems;
-            // Nem hívunk itt azonnal saveData-t, hogy ne floodoljuk a szervert rendereléskor,
-            // majd a gombnyomás menti.
         }
 
         let doneCount = 0;
@@ -410,7 +449,6 @@
             startDate: todayISO
         };
 
-        // ... (A részletes adatgyűjtés ugyanaz, mint a korábbi kódokban - helyhiány miatt rövidítve) ...
         // Adatgyűjtés típus alapján
         if (type === 'weekly_days') {
             let days = [];
