@@ -3,67 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Családi Napló (Szinkronizált)</title>
+    <title>Családi Napló (Hibrid Cloud)</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
     <style>
-        :root { --main: #4a90e2; --accent: #50e3c2; --bg: #f5f7fa; --danger: #ff6b6b; --warn: #f8e71c; --text: #333; --grey: #b0b0b0; }
+        :root { --main: #4a90e2; --accent: #00d2d3; --bg: #f5f7fa; --danger: #ff6b6b; --text: #333; }
         body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; background: var(--bg); color: var(--text); padding-bottom: 80px; user-select: none; }
         
+        /* LOGIN */
         #login-screen { position: fixed; inset: 0; background: var(--main); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
-        .login-box { background: white; padding: 25px; border-radius: 10px; width: 85%; max-width: 320px; text-align: center; color: #333; box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+        .login-box { background: white; padding: 25px; border-radius: 12px; width: 85%; max-width: 320px; text-align: center; color: #333; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
         .login-box input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem; }
         
-        header { background: white; padding: 10px 15px; position: sticky; top:0; z-index:100; box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--main); }
+        /* HEADER */
+        header { background: white; padding: 12px 15px; position: sticky; top:0; z-index:100; box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--main); }
         .header-left { display: flex; flex-direction: column; }
-        h1 { margin: 0; font-size: 1.2rem; color: var(--main); }
-        .fam-code-display { font-size: 0.75rem; color: #888; }
-        .user-badge { background: var(--main); color: white; padding: 5px 10px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; }
+        h1 { margin: 0; font-size: 1.2rem; color: var(--main); font-weight: 800; }
+        .sync-status { font-size: 0.7rem; color: #888; display: flex; align-items: center; gap: 5px; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; display: inline-block; }
+        .dot.online { background: #2ecc71; box-shadow: 0 0 5px #2ecc71; }
+        .dot.syncing { background: #f1c40f; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        .user-badge { background: var(--main); color: white; padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; }
 
         .container { padding: 15px; max-width: 600px; margin: 0 auto; }
         .tab-content { display: none; animation: fadein 0.3s; }
         .tab-content.active { display: block; }
 
-        .card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.03); border-left: 5px solid #ccc; position: relative; }
-        .status-todo { border-left-color: var(--warn); }
-        .status-done { border-left-color: var(--accent); background: #f0fcf9; opacity: 0.8; }
-        .status-planned { border-left-color: var(--main); }
-        .status-skipped { border-left-color: var(--grey); background: #f9f9f9; opacity: 0.6; filter: grayscale(100%); }
+        /* KÁRTYÁK */
+        .card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.03); border-left: 5px solid #ccc; position: relative; }
+        .status-todo { border-left-color: #f1c40f; }
+        .status-done { border-left-color: #2ecc71; background: #f0fff4; opacity: 0.9; }
+        .status-skipped { border-left-color: #bdc3c7; background: #f9f9f9; opacity: 0.6; filter: grayscale(100%); }
 
         .task-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .task-cat { font-size: 0.7rem; text-transform: uppercase; color: #999; font-weight: bold; margin-bottom: 2px; }
         .task-name { font-size: 1.1rem; font-weight: 700; color: #2c3e50; }
         .task-detail { font-size: 0.85rem; color: #666; font-style: italic; }
         
         .plan-info { background: #eef6ff; color: var(--main); padding: 5px 10px; border-radius: 5px; font-size: 0.85rem; margin-top: 10px; display: inline-block; }
         .btn-row { display: flex; gap: 8px; margin-top: 12px; }
-        button { border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; flex: 1; font-size: 0.9rem; color: white; transition: 0.2s; }
+        button { border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; flex: 1; font-size: 0.9rem; color: white; transition: 0.2s; }
         button:active { transform: scale(0.98); }
-        .btn-done { background: var(--accent); color: #00796b; flex: 2; }
-        .btn-plan { background: #ddd; color: #555; flex: 1; }
-        .btn-skip { background: #fff; border: 1px solid #ddd; color: #aaa; flex: 0.5; }
+        .btn-done { background: #2ecc71; flex: 2; }
+        .btn-plan { background: #ecf0f1; color: #555; flex: 1; }
+        .btn-skip { background: #fff; border: 1px solid #ddd; color: #aaa; flex: 0.5; font-size: 1.2rem; padding: 0; display: flex; align-items: center; justify-content: center; }
         .btn-primary { background: var(--main); width: 100%; }
         .btn-danger { background: var(--danger); }
         
-        select, input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        /* FORM */
+        select, input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; background: white; font-size: 1rem; }
         
         .week-selector { display: flex; justify-content: space-between; gap: 4px; margin-bottom: 15px; }
-        .day-btn { padding: 8px 0; flex: 1; text-align: center; border: 1px solid #ddd; border-radius: 4px; background: #fff; cursor: pointer; font-size: 0.8rem; }
+        .day-btn { padding: 10px 0; flex: 1; text-align: center; border: 1px solid #ddd; border-radius: 6px; background: #fff; cursor: pointer; font-size: 0.8rem; font-weight: bold; }
         .day-btn.selected { background: var(--main); color: white; border-color: var(--main); }
 
-        .date-nav { display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 15px; color: #666; }
-        .nav-arrow { background: none; border: 1px solid #ddd; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .stat-bar { height: 20px; background: #eee; border-radius: 10px; overflow: hidden; margin: 20px 0; display: flex; }
+        .date-nav { display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 20px; color: #666; }
+        .nav-arrow { background: white; border: 1px solid #ddd; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.2rem; }
+        .stat-bar { height: 10px; background: #eee; border-radius: 5px; overflow: hidden; margin: 20px 0; display: flex; }
         .stat-fill { height: 100%; background: var(--accent); transition: width 0.5s; }
         
         .chip-container { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; margin-bottom: 15px; }
-        .chip { background: #eee; padding: 6px 12px; border-radius: 15px; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+        .chip { background: #eee; padding: 6px 12px; border-radius: 15px; font-size: 0.85rem; cursor: pointer; }
         .chip-del { font-size: 0.8rem; opacity: 0.6; padding: 0 4px; }
 
-        nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #eee; display: flex; height: 70px; z-index: 1000; padding-bottom: env(safe-area-inset-bottom); }
-        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #aaa; font-size: 0.75rem; }
-        .nav-item.active { color: var(--main); font-weight: bold; }
+        /* NAVBAR */
+        nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #eee; display: flex; height: 70px; z-index: 1000; padding-bottom: env(safe-area-inset-bottom); box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #aaa; font-size: 0.75rem; transition: 0.2s; }
+        .nav-item.active { color: var(--main); font-weight: bold; transform: translateY(-2px); }
         .nav-icon { font-size: 1.5rem; margin-bottom: 4px; }
 
         @keyframes fadein { from { opacity:0; transform: translateY(5px); } to { opacity:1; transform: translateY(0); } }
@@ -74,7 +84,7 @@
 <div id="login-screen">
     <div class="login-box">
         <h2 style="color:var(--main); margin-top:0;">🏠 Családi Napló</h2>
-        <div style="font-size:0.8rem; color:#aaa; margin-bottom:15px;">Online Szinkronizált Verzió</div>
+        <div style="font-size:0.8rem; color:#888; margin-bottom:15px;">Hibrid Cloud Szinkron</div>
         <input type="text" id="family-code" placeholder="Család Kódja (pl. Kovacsék)">
         <input type="text" id="user-name" placeholder="Te Neved (pl. Apa)">
         <button class="btn-primary" onclick="login()">Belépés</button>
@@ -85,7 +95,7 @@
     <header>
         <div class="header-left">
             <h1>Családi Napló</h1>
-            <div class="fam-code-display">Kód: <strong id="display-fam-id"></strong></div>
+            <div class="sync-status"><span id="sync-dot" class="dot"></span> <span id="sync-text">Offline</span></div>
         </div>
         <div class="user-badge" id="display-user"></div>
     </header>
@@ -95,7 +105,7 @@
         <div id="tab-today" class="tab-content active">
             <div class="date-nav">
                 <button class="nav-arrow" onclick="changeDay(-1)">❮</button>
-                <div id="today-date" style="font-weight:bold; width:180px; text-align:center;"></div>
+                <div id="today-date" style="font-weight:bold; width:180px; text-align:center; font-size:1.1rem;"></div>
                 <button class="nav-arrow" onclick="changeDay(1)">❯</button>
             </div>
             
@@ -106,11 +116,9 @@
             <div id="task-list"></div>
             
             <div id="empty-msg" style="text-align:center; color:#aaa; margin-top:50px; display:none;">
-                <h2>☀️</h2>
+                <div style="font-size:3rem; margin-bottom:10px;">✅</div>
                 <p>Mára minden kész!</p>
             </div>
-            
-            <button onclick="checkAndGenerateDaily(true)" style="margin-top:30px; background:none; border:none; color:#aaa; font-size:0.8rem; width:100%; cursor:pointer;">🔄 Kényszerített Frissítés</button>
         </div>
 
         <div id="tab-summary" class="tab-content">
@@ -128,6 +136,7 @@
         <div id="tab-settings" class="tab-content">
             <div class="card">
                 <h3 style="margin-top:0;">➕ Új feladat</h3>
+                
                 <label>Feladat Neve</label>
                 <input type="text" id="new-name" placeholder="pl. Kuka kihúzása">
                 <label>Kategória</label>
@@ -171,11 +180,11 @@
         <div id="tab-info" class="tab-content">
             <div class="card">
                 <h3>ℹ️ Információ</h3>
-                <div style="background:#eef6ff; padding:10px; border-radius:5px; margin-bottom:10px;">
-                    <b>Állapot: Online Szinkronizálás</b><br>
-                    Ez a verzió szinkronizál a megadott Firebase fiókkal.
+                <div style="background:#e8f5e9; border:1px solid #a5d6a7; color:#2e7d32; padding:10px; border-radius:5px;">
+                    <b>Hibrid Működés (v5.0)</b><br>
+                    Az adatok a telefonodon (Cache) és a felhőben is tárolódnak. A helyi adat azonnal megjelenik, a szinkronizálás a háttérben történik. Így nem tűnnek el feladatok!
                 </div>
-                <button class="btn-danger" style="width:100%" onclick="hardReset()">⚠️ Adatok törlése és Reset</button>
+                <button class="btn-danger" style="width:100%; margin-top:15px;" onclick="hardReset()">⚠️ Cache Törlése & Reset</button>
             </div>
         </div>
     </div>
@@ -189,38 +198,36 @@
 </nav>
 
 <script>
-    // ==========================================
-    // !!! ITT CSERÉLD KI A KÓDOT A SAJÁTODRA !!!
-    // ==========================================
-  const firebaseConfig = {
-  apiKey: "AIzaSyD4cCZROENWwtdJSw8RibOOoUcyzhWvmKM",
-  authDomain: "csaladifeladatok.firebaseapp.com",
-  projectId: "csaladifeladatok",
-  storageBucket: "csaladifeladatok.firebasestorage.app",
-  messagingSenderId: "391183062816",
-  appId: "1:391183062816:web:0bf885d26c67447c50e945"
-};
-    // ==========================================
-
+    // --- 1. FIREBASE CONFIG (A TE KULCSAID) ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyD4cCZROENWwtdJSw8RibOOoUcyzhWvmKM",
+        authDomain: "csaladifeladatok.firebaseapp.com",
+        projectId: "csaladifeladatok",
+        storageBucket: "csaladifeladatok.firebasestorage.app",
+        messagingSenderId: "391183062816",
+        appId: "1:391183062816:web:0bf885d26c67447c50e945"
+    };
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    const CACHE_TASKS = 'online_tasks_v5';
-    const CACHE_DAILY = 'online_daily_v5';
-    const CACHE_META = 'online_meta_v5';
+    // --- 2. LOCAL STORAGE (CACHE) KULCSOK ---
+    const CACHE_TASKS = 'hybrid_tasks_v5';
+    const CACHE_DAILY_PREFIX = 'hybrid_daily_'; // Dátummal bővül
+    const CACHE_META = 'hybrid_meta_v5';
 
     let state = {
         famId: localStorage.getItem('famId') || '',
         user: localStorage.getItem('user') || '',
         tasks: JSON.parse(localStorage.getItem(CACHE_TASKS) || '[]'), 
-        daily: JSON.parse(localStorage.getItem(CACHE_DAILY) || '[]'), 
         categories: JSON.parse(localStorage.getItem(CACHE_META) || '[]'),
         todayStr: new Date().toISOString().split('T')[0],
-        currentDateObj: new Date()
+        currentDateObj: new Date(),
+        daily: [] // Ezt mindig az adott napra töltjük be
     };
     
     let unsubscribeDaily = null;
 
+    // --- 3. INDÍTÁS ---
     if(state.famId && state.user) startApp();
 
     function login() {
@@ -240,7 +247,7 @@
     }
     
     function hardReset() {
-        if(confirm("Törlöd a helyi gyorsítótárat?")) {
+        if(confirm("Törlöd a helyi gyorsítótárat? Az app újra letölt mindent a szerverről.")) {
             localStorage.clear();
             location.reload();
         }
@@ -254,8 +261,13 @@
         document.getElementById('display-fam-id').innerText = state.famId;
         
         updateDateDisplay();
+        
+        // 1. lépés: Betöltés Cache-ből (Azonnali megjelenés)
+        loadDailyFromCache();
         renderManageList();
         renderToday();
+        
+        // 2. lépés: Szinkron indítása a háttérben
         setupListeners();
         renderFreqOptions();
     }
@@ -268,31 +280,77 @@
     function changeDay(offset) {
         state.currentDateObj.setDate(state.currentDateObj.getDate() + offset);
         updateDateDisplay();
-        state.daily = []; 
+        
+        // Dátum váltáskor: Először Cache-ből töltünk, aztán indítjuk a szerver figyelést arra a napra
+        loadDailyFromCache();
         renderToday();
-        setupDailyListener();
+        setupDailyListener(); 
     }
 
+    // --- 4. HIBRID ADATKEZELÉS (A LÉNYEG) ---
+
+    // Cache betöltése
+    function loadDailyFromCache() {
+        const cached = localStorage.getItem(CACHE_DAILY_PREFIX + state.todayStr);
+        if (cached) {
+            state.daily = JSON.parse(cached);
+        } else {
+            state.daily = [];
+            // Ha nincs cache erre a napra, generálunk a Taskokból (Offline mód támogatása)
+            generateDailyFromTasks();
+        }
+    }
+
+    // Napi lista generálása a definíciókból (ha nincs mentett állapot)
+    function generateDailyFromTasks() {
+        const checkDate = new Date(state.currentDateObj); checkDate.setHours(0,0,0,0);
+        state.tasks.forEach(t => {
+            if (!state.daily.some(d => d.taskId === t.id)) { // Ne duplikáljunk
+                if (isTaskDueToday(t, checkDate)) {
+                    state.daily.push({
+                        taskId: t.id, name: t.name, cat: t.cat || 'Egyéb',
+                        status: 'todo', desc: describeFreq(t), plannedBy: null, plannedTime: null
+                    });
+                }
+            }
+        });
+        saveLocalDaily(); // Mentjük cache-be
+    }
+
+    // Mentés Cache-be
+    function saveLocalDaily() {
+        localStorage.setItem(CACHE_DAILY_PREFIX + state.todayStr, JSON.stringify(state.daily));
+    }
+
+    // --- 5. SZERVER SZINKRON (MERGE LOGIKA) ---
+    
     function setupListeners() {
         const famRef = db.collection('families').doc(state.famId);
-        
+        updateSyncStatus('connecting');
+
+        // Kategóriák
         famRef.collection('meta').doc('settings').onSnapshot(doc => {
             if(doc.exists) state.categories = doc.data().categories || [];
             localStorage.setItem(CACHE_META, JSON.stringify(state.categories));
             renderCategoryChips();
         });
 
+        // Feladat definíciók
         famRef.collection('tasks').onSnapshot(snap => {
             let newTasks = [];
             snap.forEach(d => newTasks.push({id: d.id, ...d.data()}));
             state.tasks = newTasks;
             localStorage.setItem(CACHE_TASKS, JSON.stringify(state.tasks));
             renderManageList();
-            checkAndGenerateDaily(); 
+            
+            // Ha jött új definíció, frissítsük a napi nézetet is (hátha bekerült egy új mai feladat)
+            generateDailyFromTasks(); 
+            renderToday();
         });
         
         setupDailyListener();
 
+        // History
         famRef.collection('history').orderBy('ts', 'desc').limit(20).onSnapshot(snap => {
             const list = document.getElementById('history-list'); list.innerHTML = '';
             snap.forEach(d => {
@@ -307,17 +365,140 @@
         if (unsubscribeDaily) unsubscribeDaily();
         const famRef = db.collection('families').doc(state.famId);
         
+        // Figyeljük az AKTUÁLIS napot a szerveren
         unsubscribeDaily = famRef.collection('daily').doc(state.todayStr).onSnapshot(doc => {
+            updateSyncStatus('online');
             if(doc.exists) { 
-                state.daily = doc.data().items || []; 
-                localStorage.setItem(CACHE_DAILY, JSON.stringify(state.daily));
-                renderToday(); 
-            } else { 
-                state.daily = [];
+                const serverItems = doc.data().items || [];
+                
+                // MERGE LOGIKA: A szerver adatok felülírják a helyit, DE...
+                // Ha helyben van olyan feladat, ami a szerveren MÉG nincs (mert épp most adtuk hozzá), azt megtartjuk!
+                
+                // 1. Frissítsük a meglévőket a szerver állapotával
+                let merged = serverItems;
+
+                // 2. Keressük meg a helyi "árva" elemeket (amiket mi adtunk hozzá, de a szerver még nem lát)
+                state.daily.forEach(localItem => {
+                    const existsOnServer = serverItems.some(s => s.taskId === localItem.taskId);
+                    if (!existsOnServer) {
+                        // Ha ez egy érvényes definícióhoz tartozik (tehát nem törölt), akkor tartsuk meg
+                        if (state.tasks.some(t => t.id === localItem.taskId)) {
+                            merged.push(localItem);
+                        }
+                    }
+                });
+
+                state.daily = merged;
+                saveLocalDaily(); // Frissítjük a cache-t a szerver adataival
                 renderToday();
-                checkAndGenerateDaily(); 
+            } else {
+                // Ha a szerveren nincs adat erre a napra, de nekünk van (Cache/Generált), akkor küldjük fel!
+                if (state.daily.length > 0) {
+                    syncDailyToServer();
+                }
             }
+        }, err => {
+            console.error("Sync Error:", err);
+            updateSyncStatus('error');
         });
+    }
+
+    // --- 6. ÍRÁS MŰVELETEK (ELŐSZÖR HELYI, AZTÁN SZERVER) ---
+
+    function saveDaily() { 
+        // 1. Azonnali helyi mentés
+        saveLocalDaily();
+        renderToday();
+        
+        // 2. Szinkronizálás a szerverre (Debounce nélkül, azonnal)
+        syncDailyToServer();
+    }
+
+    function syncDailyToServer() {
+        updateSyncStatus('syncing');
+        db.collection('families').doc(state.famId).collection('daily').doc(state.todayStr)
+            .set({ items: state.daily }, { merge: true })
+            .then(() => updateSyncStatus('online'))
+            .catch(e => {
+                console.error("Save failed:", e);
+                updateSyncStatus('error'); // De a helyi adat megmarad!
+            });
+    }
+
+    function addNewTask() {
+        const name = document.getElementById('new-name').value;
+        const cat = document.getElementById('new-cat').value.trim();
+        const type = document.getElementById('freq-type').value;
+        
+        if(!name) return alert("Név kötelező!");
+
+        const todayISO = new Date().toISOString();
+        let taskObj = { 
+            name, cat, freqType: type,
+            created: todayISO,
+            startDate: todayISO 
+        };
+
+        // ... (Adatgyűjtés a formból - ugyanaz mint eddig) ...
+        if (type === 'weekly_days') {
+            let days = [];
+            document.querySelectorAll('#opt-weekly-days .day-btn.selected').forEach(el => {
+                const txt = el.innerText;
+                if(txt=='V') days.push(0); if(txt=='H') days.push(1); if(txt=='K') days.push(2);
+                if(txt=='Sz') days.push(3); if(txt=='Cs') days.push(4); if(txt=='P') days.push(5); if(txt=='Szo') days.push(6);
+            });
+            if(days.length === 0) return alert("Válassz napot!");
+            taskObj.days = days;
+        } 
+        else if (type === 'interval_week') taskObj.interval = parseInt(document.getElementById('interval-week-num').value);
+        else if (type === 'monthly_fix') taskObj.monthDay = parseInt(document.getElementById('month-day-fix').value);
+        else if (type === 'interval_month') taskObj.interval = parseInt(document.getElementById('interval-month-num').value);
+        else if (type === 'monthly_pattern') {
+            taskObj.posNum = parseInt(document.getElementById('month-pos-num').value);
+            taskObj.posDay = parseInt(document.getElementById('month-pos-day').value);
+        }
+
+        if(cat && !state.categories.includes(cat)) {
+            const newCats = [...state.categories, cat].sort();
+            db.collection('families').doc(state.famId).collection('meta').doc('settings').update({ categories: newCats });
+        }
+
+        // --- OPTIMISTA UI ---
+        // 1. Küldés szerverre (Task Def)
+        db.collection('families').doc(state.famId).collection('tasks').add(taskObj).then((docRef) => {
+            // Sikerült, megvan a szerver ID
+            const newTaskWithId = { ...taskObj, id: docRef.id };
+            
+            // 2. Helyi lista frissítése
+            state.tasks.push(newTaskWithId);
+            localStorage.setItem(CACHE_TASKS, JSON.stringify(state.tasks));
+            renderManageList();
+
+            // 3. Ha mára esedékes, adjuk hozzá a napi listához és szinkronizáljuk
+            const checkDate = new Date(state.currentDateObj); checkDate.setHours(0,0,0,0);
+            if (isTaskDueToday(newTaskWithId, checkDate)) {
+                 state.daily.push({
+                    taskId: newTaskWithId.id, name: taskObj.name, cat: taskObj.cat || 'Egyéb',
+                    status: 'todo', desc: describeFreq(taskObj)
+                });
+                saveDaily(); // Ez frissíti a helyit ÉS a szervert is a napi listával
+            }
+            
+            alert("Rögzítve!");
+            document.getElementById('new-name').value = '';
+            document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('selected'));
+        });
+    }
+
+    // --- SEGÉD FÜGGVÉNYEK ---
+    function updateSyncStatus(status) {
+        const dot = document.getElementById('sync-dot');
+        const txt = document.getElementById('sync-text');
+        dot.className = 'dot';
+        if (status === 'online') { dot.classList.add('online'); txt.innerText = 'Online'; }
+        else if (status === 'syncing') { dot.classList.add('syncing'); txt.innerText = 'Mentés...'; }
+        else if (status === 'error') { dot.style.background = 'red'; txt.innerText = 'Hiba/Offline'; }
+        else { dot.style.background = '#ccc'; txt.innerText = 'Csatlakozás...'; }
     }
 
     function isTaskDueToday(t, checkDate) {
@@ -358,92 +539,7 @@
         return false;
     }
 
-    async function checkAndGenerateDaily() {
-        if(state.tasks.length === 0) return;
-        const ref = db.collection('families').doc(state.famId).collection('daily').doc(state.todayStr);
-        const checkDate = new Date(state.currentDateObj); checkDate.setHours(0,0,0,0);
-
-        try {
-            const doc = await ref.get();
-            let currentItems = doc.exists ? (doc.data().items || []) : [];
-            let itemsChanged = false;
-
-            state.tasks.forEach(t => {
-                if (currentItems.some(item => item.taskId === t.id)) return;
-                if (isTaskDueToday(t, checkDate)) {
-                    currentItems.push({
-                        taskId: t.id, name: t.name, cat: t.cat || 'Egyéb',
-                        status: 'todo', desc: describeFreq(t), plannedBy: null, plannedTime: null
-                    });
-                    itemsChanged = true;
-                }
-            });
-
-            if (itemsChanged) await ref.set({ items: currentItems }, { merge: true });
-        } catch(e) { console.error("Hiba a generálásnál (Valószínűleg nincs jogosultság):", e); }
-    }
-
-    function addNewTask() {
-        const name = document.getElementById('new-name').value;
-        const cat = document.getElementById('new-cat').value.trim();
-        const type = document.getElementById('freq-type').value;
-        
-        if(!name) return alert("Név kötelező!");
-
-        const todayISO = new Date().toISOString();
-        let taskObj = { name, cat, freqType: type, created: todayISO, startDate: todayISO };
-
-        if (type === 'weekly_days') {
-            let days = [];
-            document.querySelectorAll('#opt-weekly-days .day-btn.selected').forEach(el => {
-                const txt = el.innerText;
-                if(txt=='V') days.push(0); if(txt=='H') days.push(1); if(txt=='K') days.push(2);
-                if(txt=='Sz') days.push(3); if(txt=='Cs') days.push(4); if(txt=='P') days.push(5); if(txt=='Szo') days.push(6);
-            });
-            if(days.length === 0) return alert("Válassz napot!");
-            taskObj.days = days;
-        } 
-        else if (type === 'interval_week') taskObj.interval = parseInt(document.getElementById('interval-week-num').value);
-        else if (type === 'monthly_fix') taskObj.monthDay = parseInt(document.getElementById('month-day-fix').value);
-        else if (type === 'interval_month') taskObj.interval = parseInt(document.getElementById('interval-month-num').value);
-        else if (type === 'monthly_pattern') {
-            taskObj.posNum = parseInt(document.getElementById('month-pos-num').value);
-            taskObj.posDay = parseInt(document.getElementById('month-pos-day').value);
-        }
-
-        if(cat && !state.categories.includes(cat)) {
-            const newCats = [...state.categories, cat].sort();
-            db.collection('families').doc(state.famId).collection('meta').doc('settings').update({ categories: newCats });
-        }
-
-        // OPTIMISTA UI
-        const tempId = "temp_" + Date.now();
-        const taskWithTempId = { ...taskObj, id: tempId };
-        state.tasks.push(taskWithTempId);
-        localStorage.setItem(CACHE_TASKS, JSON.stringify(state.tasks));
-        renderManageList();
-
-        const checkDate = new Date(state.currentDateObj); checkDate.setHours(0,0,0,0);
-        if (isTaskDueToday(taskWithTempId, checkDate)) {
-             state.daily.push({
-                taskId: tempId, name: taskObj.name, cat: taskObj.cat || 'Egyéb',
-                status: 'todo', desc: describeFreq(taskObj)
-            });
-            localStorage.setItem(CACHE_DAILY, JSON.stringify(state.daily));
-            renderToday();
-        }
-
-        db.collection('families').doc(state.famId).collection('tasks').add(taskObj).then(() => {
-            checkAndGenerateDaily(); 
-            alert("Rögzítve!");
-            document.getElementById('new-name').value = '';
-            document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('selected'));
-        }).catch(err => {
-            alert("HIBA: Nem sikerült menteni a szerverre. Ellenőrizd az API kulcsokat! (Lásd Info)");
-            console.error(err);
-        });
-    }
-
+    // UI RENDERERS (Ugyanaz mint eddig, csak a saveDaily hívja a sync-et)
     function describeFreq(t) {
         if(t.freqType === 'every_day') return 'Minden nap';
         if(t.freqType === 'interval_week') return `Minden ${t.interval}. héten`;
@@ -463,7 +559,7 @@
             
             let btns = '';
             if (item.status === 'done') btns = `<div style="margin-top:10px; color:var(--accent); font-weight:bold;">✅ Kész: ${item.doneBy}</div>`;
-            else if (item.status === 'skipped') btns = `<div style="margin-top:10px; color:#aaa;">🚫 Kihagyva <button onclick="resetTask(${idx})" style="background:none; border:none; color:var(--main); text-decoration:underline; cursor:pointer;">Vissza</button></div>`;
+            else if (item.status === 'skipped') btns = `<div style="margin-top:10px; color:#aaa;">🚫 Kihagyva <button onclick="resetTask(${idx})" style="background:none; border:none; color:var(--main); text-decoration:underline;">Vissza</button></div>`;
             else btns = `<div class="btn-row"><button class="btn-skip" onclick="skipTask(${idx})">🚫</button><button class="btn-plan" onclick="planTask(${idx})">${item.plannedBy?'Módosít':'✋'}</button><button class="btn-done" onclick="finishTask(${idx})">✔</button></div>`;
             
             list.innerHTML += `<div class="card ${statusClass}"><div class="task-header"><div><div class="task-cat">${item.cat}</div><div class="task-name">${item.name}</div><div class="task-detail">${item.desc || ''}</div></div></div>${planInfo}${btns}</div>`;
@@ -474,26 +570,10 @@
         document.getElementById('stat-done').innerText = done;
     }
 
-    function planTask(idx) {
-        const t = prompt("Mikorra?", "De."); if(!t) return;
-        state.daily[idx].plannedBy = state.user; state.daily[idx].plannedTime = t;
-        saveDaily(); 
-    }
-    function finishTask(idx) {
-        state.daily[idx].status = 'done'; state.daily[idx].doneBy = state.user;
-        saveDaily();
-        db.collection('families').doc(state.famId).collection('history').add({ task: state.daily[idx].name, user: state.user, ts: firebase.firestore.FieldValue.serverTimestamp() });
-    }
-    function skipTask(idx) {
-        if(confirm("Nem releváns mára?")) { state.daily[idx].status = 'skipped'; saveDaily(); }
-    }
+    function planTask(idx) { const t = prompt("Mikorra?", "De."); if(!t) return; state.daily[idx].plannedBy = state.user; state.daily[idx].plannedTime = t; saveDaily(); }
+    function finishTask(idx) { state.daily[idx].status = 'done'; state.daily[idx].doneBy = state.user; saveDaily(); db.collection('families').doc(state.famId).collection('history').add({ task: state.daily[idx].name, user: state.user, ts: firebase.firestore.FieldValue.serverTimestamp() }); }
+    function skipTask(idx) { if(confirm("Kihagyod?")) { state.daily[idx].status = 'skipped'; saveDaily(); } }
     function resetTask(idx) { state.daily[idx].status = 'todo'; saveDaily(); }
-
-    function saveDaily() { 
-        localStorage.setItem(CACHE_DAILY, JSON.stringify(state.daily));
-        renderToday();
-        db.collection('families').doc(state.famId).collection('daily').doc(state.todayStr).update({ items: state.daily }); 
-    }
 
     function renderFreqOptions() {
         const type = document.getElementById('freq-type').value;
@@ -507,7 +587,6 @@
     function toggleDay(el) { el.classList.toggle('selected'); }
     function renderCategoryChips() { const c = document.getElementById('cat-chips'); c.innerHTML = ''; state.categories.forEach(cat => c.innerHTML += `<div class="chip" onclick="document.getElementById('new-cat').value='${cat}'">${cat} <span class="chip-del" onclick="deleteCat('${cat}', event)">✖</span></div>`); }
     function deleteCat(cat, e) { e.stopPropagation(); if(confirm("Törlöd?")) { const newCats = state.categories.filter(c => c !== cat); db.collection('families').doc(state.famId).collection('meta').doc('settings').update({ categories: newCats }); } }
-    
     function renderManageList() {
         const div = document.getElementById('manage-list'); div.innerHTML = '';
         state.tasks.forEach(t => {
