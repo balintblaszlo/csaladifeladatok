@@ -6,8 +6,8 @@
     <title>Családi Feladatok</title>
     
     <style>
-        :root { --main: #6c5ce7; --accent: #00cec9; --bg: #dfe6e9; --danger: #ff7675; --text: #2d3436; }
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; background: var(--bg); color: var(--text); padding-bottom: 80px; user-select: none; }
+        :root { --main: #6c5ce7; --accent: #00cec9; --bg: #dfe6e9; --danger: #ff7675; --text: #2d3436; --warn: #fdcb6e; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; background: var(--bg); color: var(--text); padding-bottom: 90px; user-select: none; }
         
         /* LOGIN */
         #login-screen { position: fixed; inset: 0; background: var(--main); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; padding: 20px; overflow-y: auto; }
@@ -19,12 +19,15 @@
         header { background: white; padding: 15px; position: sticky; top: 0; z-index:100; box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
         h1 { margin: 0; font-size: 1.2rem; color: var(--text); font-weight: 800; }
         
+        .header-controls { display: flex; gap: 10px; align-items: center; }
+        .lang-btn { background: #eee; border: none; padding: 5px 10px; border-radius: 15px; font-size: 1.2rem; cursor: pointer; }
+
         .pantry-id-badge { 
             background: var(--main); color: white; font-family: monospace; font-size: 0.75rem; 
-            padding: 4px 8px; border-radius: 6px; font-weight: bold; cursor: pointer;
+            padding: 4px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; display: inline-block;
         }
 
-        .sync-badge { font-size: 0.7rem; background: #eee; padding: 3px 8px; border-radius: 10px; color: #555; }
+        .sync-badge { font-size: 0.7rem; background: #eee; padding: 3px 8px; border-radius: 10px; color: #555; display: inline-block; margin-left: 5px;}
         .sync-badge.active { background: #55efc4; color: #006266; }
         
         /* LAYOUT */
@@ -34,22 +37,24 @@
 
         /* KÁRTYÁK */
         .card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.04); border-left: 5px solid #ccc; position: relative; }
-        .status-todo { border-left-color: #fdcb6e; }
+        .status-todo { border-left-color: var(--warn); }
         .status-done { border-left-color: #00b894; background: #f0fff4; opacity: 0.8; }
         .status-skipped { border-left-color: #b2bec3; opacity: 0.6; filter: grayscale(100%); }
 
         .task-header { display: flex; justify-content: space-between; }
         .task-name { font-size: 1.1rem; font-weight: 700; color: #2d3436; }
-        .task-detail { font-size: 0.8rem; color: #636e72; font-style: italic; margin-top: 4px; }
         
         /* GOMBOK */
         .btn-primary { background: var(--main); color: white; width: 100%; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 1rem; }
+        .btn-edit-mode { background: var(--warn); color: #333; }
         .btn-secondary { background: #0984e3; color: white; width: 100%; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        
         .btn-row { display: flex; gap: 8px; margin-top: 12px; }
         button { border: none; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer; flex: 1; font-size: 0.9rem; transition: 0.2s; }
         .btn-done { background: #00b894; color: white; flex: 2; }
         .btn-skip { background: white; border: 1px solid #dfe6e9; color: #b2bec3; flex: 0.5; }
         .btn-danger { background: var(--danger); color: white; width: 100%; }
+        .btn-icon { flex: 0; padding: 5px 12px; font-size: 1rem; margin-left: 5px; }
 
         /* QR CODE BOX */
         .qr-box { text-align: center; background: #f9f9f9; padding: 15px; border-radius: 10px; margin-top: 15px; border: 2px dashed #ccc; }
@@ -68,6 +73,8 @@
         .chip-container { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 15px; }
         .chip { background: #eee; padding: 6px 12px; border-radius: 15px; font-size: 0.85rem; cursor: pointer; }
         
+        .version-tag { text-align: center; font-size: 0.7rem; color: #aaa; margin-top: 30px; }
+
         /* NAVBAR */
         nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #eee; display: flex; height: 70px; z-index: 1000; padding-bottom: env(safe-area-inset-bottom); }
         .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #b2bec3; font-size: 0.75rem; }
@@ -81,31 +88,33 @@
 
 <div id="login-screen">
     <div class="login-box">
-        <h2 style="color:var(--main); margin-top:0;">☁️ Családi Feladatok</h2>
-        <p style="font-size:0.9rem; color:#666;">Egy kód az egész családnak.</p>
+        <h2 style="color:var(--main); margin-top:0;" data-i18n="app_title">☁️ Családi Feladatok</h2>
+        <p style="font-size:0.9rem; color:#666;" data-i18n="login_subtitle">Egy kód az egész családnak.</p>
         
-        <label>Te neved</label>
-        <input type="text" id="user-name" placeholder="pl. Anya">
+        <label data-i18n="your_name">Te neved</label>
+        <input type="text" id="user-name" placeholder="...">
         
-        <label>Közös Pantry Kód (ID)</label>
-        <input type="text" id="pantry-id" placeholder="Illeszd be a kódot ide">
+        <label>Pantry ID</label>
+        <input type="text" id="pantry-id" placeholder="ID...">
         
         <div style="font-size:0.75rem; color:#888; margin-bottom:15px; line-height:1.4;">
-            Még nincs kódod? <a href="https://getpantry.cloud/" target="_blank" style="color:var(--main)">Kérj egyet itt</a>.<br>
-            Ha kaptál <b>linket</b> vagy <b>QR kódot</b>, használd azt!
+            <span data-i18n="no_code">Még nincs kódod?</span> <a href="https://getpantry.cloud/" target="_blank" style="color:var(--main)">GetPantry</a>.<br>
         </div>
 
-        <button class="btn-primary" onclick="login()">Belépés</button>
+        <button class="btn-primary" onclick="login()" data-i18n="btn_login">Belépés</button>
     </div>
 </div>
 
 <div id="app" style="display:none;">
     <header>
-        <div style="display:flex; flex-direction:column;">
-            <div id="sticky-pantry-id" class="pantry-id-badge" onclick="copyIdToClipboard()">ID Másolása 📋</div>
-            <h1 style="margin-top:5px;">Családi Feladatok</h1>
+        <div>
+            <div style="font-size:0.7rem; color:#666;" id="display-user-header"></div>
+            <h1 style="margin-top:0;" data-i18n="app_title">Családi Feladatok</h1>
         </div>
-        <div class="sync-badge" id="sync-status">Offline</div>
+        <div class="header-controls">
+            <button class="lang-btn" onclick="toggleLanguage()" id="lang-icon">HU</button>
+            <div class="sync-badge" id="sync-status">Offline</div>
+        </div>
     </header>
 
     <div class="container">
@@ -121,23 +130,28 @@
             
             <div id="empty-msg" style="text-align:center; color:#aaa; margin-top:60px; display:none;">
                 <div style="font-size:3rem; margin-bottom:10px;">✅</div>
-                <p>Mára minden kész!</p>
+                <p data-i18n="all_done">Mára minden kész!</p>
             </div>
         </div>
 
         <div id="tab-settings" class="tab-content">
-            <div class="card">
-                <h3 style="margin-top:0;">➕ Új feladat</h3>
+            <div class="card" id="edit-card">
+                <h3 style="margin-top:0;">
+                    <span id="form-title" data-i18n="new_task">➕ Új feladat</span>
+                    <button id="cancel-edit" onclick="cancelEdit()" style="display:none; float:right; font-size:0.8rem; background:#ccc; padding:5px;">❌</button>
+                </h3>
                 
                 <input type="text" id="new-name" placeholder="Feladat neve">
-                <input type="text" id="new-cat" placeholder="Kategória (pl. Konyha)" oninput="filterCats()">
+                <input type="text" id="new-cat" placeholder="Kategória" oninput="filterCats()">
                 <div id="cat-chips" class="chip-container"></div>
 
+                <label data-i18n="freq_label">Gyakoriság:</label>
                 <select id="freq-type" onchange="renderFreqOptions()">
-                    <option value="every_day">Minden nap</option>
-                    <option value="weekly_days">Heti konkrét napok</option>
-                    <option value="interval_week">Ciklikus (Hetente)</option>
-                    <option value="monthly_fix">Havi fix napon</option>
+                    <option value="every_day" data-i18n="freq_every_day">Minden nap</option>
+                    <option value="weekly_days" data-i18n="freq_weekly_days">Heti konkrét napok</option>
+                    <option value="interval_week" data-i18n="freq_interval_week">Ciklikus (Hetente)</option>
+                    <option value="interval_month" data-i18n="freq_interval_month">Ciklikus (Havonta)</option>
+                    <option value="monthly_fix" data-i18n="freq_monthly_fix">Havi fix napon</option>
                 </select>
 
                 <div id="opt-weekly-days" style="display:none;">
@@ -150,55 +164,121 @@
                         <div class="day-btn" onclick="toggleDay(this)">Sz</div>
                         <div class="day-btn" onclick="toggleDay(this)">V</div>
                     </div>
-                    <small style="color:#888; display:block; margin-bottom:10px;">Jelöld ki a napokat!</small>
                 </div>
-                <div id="opt-interval-week" style="display:none;"><label>Minden X. héten:</label><input type="number" id="interval-week-num" value="1" min="1"></div>
-                <div id="opt-monthly-fix" style="display:none;"><label>Hányadikán:</label><input type="number" id="month-day-fix" min="1" max="31" value="1"></div>
+                <div id="opt-interval-week" style="display:none;">
+                    <label data-i18n="every_x_weeks">Minden X. héten:</label>
+                    <input type="number" id="interval-week-num" value="1" min="1">
+                </div>
+                <div id="opt-interval-month" style="display:none;">
+                    <label data-i18n="every_y_months">Minden Y. hónapban:</label>
+                    <input type="number" id="interval-month-num" value="1" min="1">
+                </div>
+                <div id="opt-monthly-fix" style="display:none;">
+                    <label data-i18n="which_day">Hányadikán:</label>
+                    <input type="number" id="month-day-fix" min="1" max="31" value="1">
+                </div>
 
-                <button class="btn-primary" onclick="addNewTask()">Mentés</button>
+                <button id="btn-save-task" class="btn-primary" onclick="saveTaskFromForm()" data-i18n="btn_save">Mentés</button>
             </div>
             
-            <h3>Feladatok kezelése</h3>
+            <h3 data-i18n="manage_tasks">Feladatok kezelése</h3>
             <div id="manage-list"></div>
         </div>
 
         <div id="tab-info" class="tab-content">
             
             <div class="card" style="border-left-color: var(--main);">
-                <h3 style="margin-top:0;">🔗 Család meghívása</h3>
-                <p>Hogy a többiek is lássák ezt a feladatnaplót, ugyanazt a kódot kell használniuk.</p>
+                <h3 style="margin-top:0;" data-i18n="share_title">🔗 Család meghívása</h3>
+                <p data-i18n="share_desc">Hogy a többiek is lássák ezt a feladatnaplót, ugyanazt a kódot kell használniuk.</p>
                 
-                <button class="btn-secondary" onclick="shareAccess()">📤 Kód küldése (Messenger/Viber)</button>
+                <button class="btn-secondary" onclick="shareAccess()" data-i18n="btn_send_code">📤 Kód küldése</button>
                 
                 <div class="qr-box">
-                    <p style="margin:0 0 10px 0; font-size:0.8rem; color:#666;">Mutasd ezt a családtagodnak:</p>
                     <img id="qr-image" src="" alt="QR Kód">
-                    <p style="font-size:0.7rem; color:#888; margin-top:5px;">Ha ezt leolvassák a kamerával, a telefonjuk felajánlja a kód másolását.</p>
                 </div>
             </div>
 
             <div class="card">
-                <h3>Saját adatok</h3>
+                <h3 data-i18n="settings_title">Beállítások</h3>
                 <p><b>Név:</b> <span id="display-user"></span></p>
-                <p><b>Pantry ID:</b> <span id="display-pantry-id" style="font-family:monospace; font-weight:bold;"></span></p>
-                <div style="margin-top: 20px;">
-                    <button class="btn-danger" onclick="logout()">🚪 Kilépés</button>
+                <div style="font-family:monospace; margin-bottom:10px; word-break:break-all;">
+                    <b>ID:</b> <span id="display-pantry-id"></span>
+                </div>
+
+                <button class="btn-secondary" onclick="fetchData()" style="margin-bottom:10px;">🔄 <span data-i18n="force_sync">Szinkronizálás most</span></button>
+                <button class="btn-danger" onclick="logout()" data-i18n="btn_logout">🚪 Kilépés</button>
+            </div>
+
+            <div class="card">
+                <h3 data-i18n="help_title">Használati Útmutató</h3>
+                <div style="font-size:0.9rem; line-height:1.5; color:#444;">
+                    <p data-i18n="help_1"><b>1. Napló:</b> Itt látod a mai teendőket. Ha kész vagy, nyomj a 'Kész'-re. Ha ma nem csinálod meg, a 'Tiltás' jellel átugorhatod.</p>
+                    <p data-i18n="help_2"><b>2. Új/Szerkesztés:</b> Itt adhatsz hozzá új feladatokat vagy módosíthatod a régieket. A ceruza ikonnal töltsd be szerkesztésre.</p>
+                    <p data-i18n="help_3"><b>3. Szinkron:</b> Az adatok automatikusan mentődnek a felhőbe. Ha nem látsz valamit, nyomj a fenti 'Szinkronizálás most' gombra.</p>
                 </div>
             </div>
+
+            <div class="version-tag">Verzió: v0.8 (Beta)</div>
         </div>
     </div>
 </div>
 
 <nav>
-    <div class="nav-item active" onclick="switchTab('tab-today', this)"><span class="nav-icon">📅</span> Ma</div>
-    <div class="nav-item" onclick="switchTab('tab-settings', this)"><span class="nav-icon">⚙️</span> Új</div>
-    <div class="nav-item" onclick="switchTab('tab-info', this)"><span class="nav-icon">🔗</span> Infó</div>
+    <div class="nav-item active" onclick="switchTab('tab-today', this)"><span class="nav-icon">📅</span> <span data-i18n="nav_today">Ma</span></div>
+    <div class="nav-item" onclick="switchTab('tab-settings', this)"><span class="nav-icon">⚙️</span> <span data-i18n="nav_new">Beállít</span></div>
+    <div class="nav-item" onclick="switchTab('tab-info', this)"><span class="nav-icon">🔗</span> <span data-i18n="nav_info">Infó</span></div>
 </nav>
 
 <script>
+    // --- NYELVI BEÁLLÍTÁSOK (LOCALSTORAGE - DEVICE SPECIFIC) ---
+    const i18n = {
+        hu: {
+            app_title: "Családi Feladatok", login_subtitle: "Egy kód az egész családnak.", your_name: "Te neved", no_code: "Még nincs kódod?", btn_login: "Belépés",
+            all_done: "Mára minden kész!", new_task: "➕ Új feladat", edit_task: "✏️ Szerkesztés", freq_label: "Gyakoriság:",
+            freq_every_day: "Minden nap", freq_weekly_days: "Heti konkrét napok", freq_interval_week: "Ciklikus (Hetente)", freq_interval_month: "Ciklikus (Havonta)", freq_monthly_fix: "Havi fix napon",
+            every_x_weeks: "Minden X. héten:", every_y_months: "Minden Y. hónapban:", which_day: "Hányadikán:", btn_save: "Mentés", btn_update: "Módosítás",
+            manage_tasks: "Feladatok kezelése", share_title: "🔗 Család meghívása", share_desc: "Hogy a többiek is lássák ezt a naplót, ugyanazt a kódot kell használniuk.",
+            btn_send_code: "📤 Kód küldése", settings_title: "Saját adatok", force_sync: "Szinkronizálás most", btn_logout: "🚪 Kilépés",
+            help_title: "Használati Útmutató", help_1: "<b>1. Napló:</b> Itt látod a mai teendőket.", help_2: "<b>2. Szerkesztés:</b> A listában a ceruza ikonnal szerkeszthetsz.", help_3: "<b>3. Szinkron:</b> Automatikus, de manuálisan is frissíthetsz.",
+            nav_today: "Ma", nav_new: "Kezelés", nav_info: "Infó", confirm_del: "Biztosan törlöd? A korábbi teljesítések is törlődnek!",
+            task_saved: "Sikeres mentés!", task_deleted: "Törölve."
+        },
+        en: {
+            app_title: "Family Tasks", login_subtitle: "One code for the whole family.", your_name: "Your Name", no_code: "No code yet?", btn_login: "Login",
+            all_done: "All done for today!", new_task: "➕ New Task", edit_task: "✏️ Edit Task", freq_label: "Frequency:",
+            freq_every_day: "Every day", freq_weekly_days: "Specific weekdays", freq_interval_week: "Cyclic (Weeks)", freq_interval_month: "Cyclic (Months)", freq_monthly_fix: "Monthly fix date",
+            every_x_weeks: "Every X weeks:", every_y_months: "Every Y months:", which_day: "Day of month:", btn_save: "Save", btn_update: "Update",
+            manage_tasks: "Manage Tasks", share_title: "🔗 Invite Family", share_desc: "Share this code so others can access the diary.",
+            btn_send_code: "📤 Send Code", settings_title: "My Data", force_sync: "Sync Now", btn_logout: "🚪 Logout",
+            help_title: "User Guide", help_1: "<b>1. Diary:</b> View today's tasks here.", help_2: "<b>2. Edit:</b> Use the pencil icon to edit tasks.", help_3: "<b>3. Sync:</b> Automatic, but you can force sync here.",
+            nav_today: "Today", nav_new: "Manage", nav_info: "Info", confirm_del: "Delete task? History will also be deleted!",
+            task_saved: "Saved successfully!", task_deleted: "Deleted."
+        }
+    };
+
+    let currentLang = localStorage.getItem('app_lang') || (navigator.language.startsWith('hu') ? 'hu' : 'en');
+    
+    function toggleLanguage() {
+        currentLang = currentLang === 'hu' ? 'en' : 'hu';
+        localStorage.setItem('app_lang', currentLang);
+        applyLanguage();
+    }
+
+    function applyLanguage() {
+        document.getElementById('lang-icon').innerText = currentLang.toUpperCase();
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if(i18n[currentLang][key]) {
+                if(el.tagName === 'INPUT') el.placeholder = i18n[currentLang][key];
+                else el.innerHTML = i18n[currentLang][key];
+            }
+        });
+        updateDateDisplay();
+    }
+
     // --- KONFIGURÁCIÓ ---
     const PANTRY_BASE = "https://getpantry.cloud/apiv1/pantry/";
-    const BASKET_NAME = "MyFamilyTasks"; 
+    const BASKET_NAME = "MyFamilyTasks_v2"; // Új verzióhoz új kosárnév ajánlott
 
     // --- ÁLLAPOT ---
     let state = {
@@ -206,8 +286,9 @@
         pantryId: localStorage.getItem('pantry_id') || '',
         tasks: [], dailyLog: {}, categories: [], currentDateObj: new Date()
     };
+    let editingTaskId = null; // Szerkesztési mód
 
-    // --- OKOS URL KEZELÉS (MAGIC LINK) ---
+    // --- INIT ---
     const urlParams = new URLSearchParams(window.location.search);
     const idFromUrl = urlParams.get('id');
     if(idFromUrl) {
@@ -215,28 +296,29 @@
         if(state.user) login(); 
     }
 
-    // --- INDÍTÁS ---
     if(state.user && state.pantryId) {
         document.getElementById('user-name').value = state.user;
         document.getElementById('pantry-id').value = state.pantryId;
         startApp();
     }
+    
+    // Nyelv betöltése azonnal
+    applyLanguage();
 
     function login() {
         const u = document.getElementById('user-name').value.trim();
         const pid = document.getElementById('pantry-id').value.trim();
-        if(!u || !pid) return alert("Név és Kód kötelező!");
+        if(!u || !pid) return alert("Required!");
         
         state.user = u;
         state.pantryId = pid;
         localStorage.setItem('pantry_user', u);
         localStorage.setItem('pantry_id', pid);
-        
         startApp();
     }
 
     function logout() {
-        if(confirm("Biztosan kilépsz?")) {
+        if(confirm("Exit?")) {
             localStorage.clear();
             window.location.href = window.location.pathname; 
         }
@@ -247,48 +329,20 @@
         document.getElementById('app').style.display = 'block';
         
         document.getElementById('display-user').innerText = state.user;
+        document.getElementById('display-user-header').innerText = "👤 " + state.user;
         document.getElementById('display-pantry-id').innerText = state.pantryId;
-        document.getElementById('sticky-pantry-id').innerText = "📋 ID: " + state.pantryId.substring(0,6) + "...";
         
         const currentUrl = window.location.href.split('?')[0];
         const isWeb = currentUrl.startsWith('http');
         const qrData = isWeb ? `${currentUrl}?id=${state.pantryId}` : state.pantryId;
-        
         document.getElementById('qr-image').src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrData)}`;
 
         updateDateDisplay();
         fetchData();
-        setInterval(fetchData, 8000); 
+        setInterval(fetchData, 15000); // Ritkább auto sync
     }
 
-    // --- MEGOSZTÁS ---
-    async function shareAccess() {
-        const currentUrl = window.location.href.split('?')[0];
-        const isWeb = currentUrl.startsWith('http');
-        
-        const shareData = {
-            title: 'Családi Feladatok Belépés',
-            text: `Szia! Itt a családi feladatnapló kódja: ${state.pantryId}`,
-            url: isWeb ? `${currentUrl}?id=${state.pantryId}` : undefined
-        };
-
-        if (navigator.share) {
-            try { await navigator.share(shareData); } catch (err) { console.log('Megosztás megszakítva'); }
-        } else {
-            copyIdToClipboard();
-            alert("A kód a vágólapra másolva! Küldd el Messengeren.");
-        }
-    }
-
-    function copyIdToClipboard() {
-        navigator.clipboard.writeText(state.pantryId).then(() => {
-            alert("Kód kimásolva: " + state.pantryId);
-        }).catch(err => {
-            prompt("Másold ki innen a kódot:", state.pantryId);
-        });
-    }
-
-    // --- API & DATA ---
+    // --- ADATKEZELÉS ---
     async function fetchData() {
         updateSyncStatus('syncing');
         const url = `${PANTRY_BASE}${state.pantryId}/basket/${BASKET_NAME}`;
@@ -296,22 +350,17 @@
             const res = await fetch(url);
             if (!res.ok) {
                 if(res.status === 400 || res.status === 404) { 
-                    console.log("Kosár nem található, létrehozás...");
-                    await saveData(true); 
-                    return; 
+                    console.log("Creating new basket...");
+                    await saveData(true); return; 
                 }
-                const text = await res.text();
-                throw new Error("Szerver hiba (" + res.status + ")");
+                throw new Error(res.status);
             }
             const data = await res.json();
             state.tasks = data.tasks || [];
             state.dailyLog = data.dailyLog || {};
             state.categories = data.categories || [];
             renderManageList(); renderToday(); updateSyncStatus('online');
-        } catch (e) { 
-            console.error(e);
-            updateSyncStatus('error'); 
-        }
+        } catch (e) { console.error(e); updateSyncStatus('error'); }
     }
 
     async function saveData(isInit = false) {
@@ -329,20 +378,150 @@
         const el = document.getElementById('sync-status');
         if(s==='syncing') { el.innerText = '⌛'; el.className = 'sync-badge'; }
         else if(s==='online') { el.innerText = '☁️ OK'; el.className = 'sync-badge active'; }
-        else { el.innerText = '⚠️ Hiba'; el.style.background='red'; el.style.color='white'; }
+        else { el.innerText = '⚠️ Err'; el.style.background='red'; el.style.color='white'; }
     }
 
-    // --- UI LOGIKA ---
-    function getTodayStr() { return state.currentDateObj.toISOString().split('T')[0]; }
-    
+    // --- TASK LOGIKA ---
+    function saveTaskFromForm() {
+        const name = document.getElementById('new-name').value;
+        if(!name) return alert("Name required!");
+        const cat = document.getElementById('new-cat').value;
+        const type = document.getElementById('freq-type').value;
+        
+        let t = { 
+            id: editingTaskId || 't_'+Date.now(), 
+            name, 
+            cat, 
+            freqType: type, 
+            startDate: editingTaskId ? state.tasks.find(x=>x.id===editingTaskId).startDate : new Date().toISOString() 
+        };
+        
+        if(type==='weekly_days') {
+            let days = [];
+            const dayButtons = document.querySelectorAll('.week-selector .day-btn');
+            const dayMap = [1, 2, 3, 4, 5, 6, 0];
+            dayButtons.forEach((btn, index) => { if(btn.classList.contains('selected')) days.push(dayMap[index]); });
+            if(days.length === 0) return alert("Select days!");
+            t.days = days;
+        }
+        else if(type==='interval_week') t.interval = parseInt(document.getElementById('interval-week-num').value);
+        else if(type==='interval_month') t.interval = parseInt(document.getElementById('interval-month-num').value);
+        else if(type==='monthly_fix') t.monthDay = parseInt(document.getElementById('month-day-fix').value);
+
+        if(cat && !state.categories.includes(cat)) state.categories.push(cat);
+
+        if (editingTaskId) {
+            // Update existing
+            const idx = state.tasks.findIndex(x => x.id === editingTaskId);
+            if(idx > -1) state.tasks[idx] = t;
+        } else {
+            // New
+            state.tasks.push(t);
+        }
+        
+        saveData(); 
+        alert(i18n[currentLang].task_saved);
+        cancelEdit(); // Reset form
+        switchTab('tab-today');
+    }
+
+    function loadTaskForEdit(id) {
+        const t = state.tasks.find(x => x.id === id);
+        if(!t) return;
+        
+        editingTaskId = id;
+        document.getElementById('form-title').innerText = i18n[currentLang].edit_task;
+        document.getElementById('btn-save-task').innerText = i18n[currentLang].btn_update;
+        document.getElementById('btn-save-task').classList.add('btn-edit-mode');
+        document.getElementById('cancel-edit').style.display = 'block';
+
+        document.getElementById('new-name').value = t.name;
+        document.getElementById('new-cat').value = t.cat;
+        document.getElementById('freq-type').value = t.freqType;
+        renderFreqOptions();
+
+        if(t.freqType === 'weekly_days') {
+            // Reset buttons
+            document.querySelectorAll('.week-selector .day-btn').forEach(b => b.classList.remove('selected'));
+            // Select active ones. UI index: 0=H(1), 1=K(2)... 5=Sz(6), 6=V(0)
+            const mapRev = {1:0, 2:1, 3:2, 4:3, 5:4, 6:5, 0:6};
+            const btns = document.querySelectorAll('.week-selector .day-btn');
+            t.days.forEach(d => { if(mapRev[d] !== undefined) btns[mapRev[d]].classList.add('selected'); });
+        }
+        else if(t.freqType === 'interval_week') document.getElementById('interval-week-num').value = t.interval;
+        else if(t.freqType === 'interval_month') document.getElementById('interval-month-num').value = t.interval;
+        else if(t.freqType === 'monthly_fix') document.getElementById('month-day-fix').value = t.monthDay;
+
+        window.scrollTo(0,0);
+    }
+
+    function cancelEdit() {
+        editingTaskId = null;
+        document.getElementById('form-title').innerText = i18n[currentLang].new_task;
+        document.getElementById('btn-save-task').innerText = i18n[currentLang].btn_save;
+        document.getElementById('btn-save-task').classList.remove('btn-edit-mode');
+        document.getElementById('cancel-edit').style.display = 'none';
+        document.getElementById('new-name').value = '';
+        document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('selected'));
+    }
+
+    function deleteTask(id) { 
+        if(confirm(i18n[currentLang].confirm_del)) { 
+            // 1. Remove task def
+            state.tasks = state.tasks.filter(x => x.id !== id);
+            
+            // 2. Remove from history (cleanup)
+            Object.keys(state.dailyLog).forEach(dayKey => {
+                state.dailyLog[dayKey] = state.dailyLog[dayKey].filter(item => item.taskId !== id);
+                if(state.dailyLog[dayKey].length === 0) delete state.dailyLog[dayKey];
+            });
+
+            saveData(); 
+            renderManageList();
+            if(editingTaskId === id) cancelEdit();
+        } 
+    }
+
+    function isTaskDue(t, dateToCheck) {
+        const d = dateToCheck.getDate(); 
+        const day = dateToCheck.getDay();
+        const m = dateToCheck.getMonth();
+        const y = dateToCheck.getFullYear();
+        
+        if(t.freqType === 'every_day') return true;
+        if(t.freqType === 'weekly_days') return t.days ? t.days.includes(day) : true;
+        if(t.freqType === 'monthly_fix') return d == t.monthDay;
+        
+        const startDate = new Date(t.startDate);
+        startDate.setHours(0,0,0,0);
+        const currDate = new Date(dateToCheck);
+        currDate.setHours(0,0,0,0);
+
+        if(t.freqType === 'interval_week') {
+             const diffDays = Math.floor((currDate - startDate) / (1000 * 60 * 60 * 24));
+             return diffDays >= 0 && diffDays % (t.interval * 7) === 0;
+        }
+        if(t.freqType === 'interval_month') {
+            // Havi ciklus: Ellenőrizzük, hogy a hónap különbség osztható-e az intervallummal
+            // ÉS a nap megegyezik-e a kezdés napjával.
+            const startDay = startDate.getDate();
+            if (d !== startDay) return false; // Csak ugyanazon a napon (pl. 15-én)
+
+            const monthDiff = (y - startDate.getFullYear()) * 12 + (m - startDate.getMonth());
+            return monthDiff >= 0 && monthDiff % t.interval === 0;
+        }
+        return false;
+    }
+
+    // --- UI RENDER ---
     function renderToday() {
         const list = document.getElementById('task-list'); list.innerHTML = '';
-        const todayStr = getTodayStr();
+        const todayStr = state.currentDateObj.toISOString().split('T')[0];
         let dailyItems = state.dailyLog[todayStr] || [];
         
         state.tasks.forEach(t => {
             if (!dailyItems.some(i => i.taskId === t.id) && isTaskDue(t, state.currentDateObj)) {
-                dailyItems.push({ taskId: t.id, name: t.name, cat: t.cat||'Egyéb', status: 'todo' });
+                dailyItems.push({ taskId: t.id, name: t.name, cat: t.cat||'', status: 'todo' });
             }
         });
         
@@ -359,84 +538,20 @@
             let btns = item.status === 'todo' ? `
                 <div class="btn-row">
                     <button class="btn-skip" onclick="updateStatus('${todayStr}',${idx},'skipped')">🚫</button>
-                    <button class="btn-done" onclick="updateStatus('${todayStr}',${idx},'done')">Kész</button>
-                </div>` : (item.status==='done' ? `<div style="margin-top:5px; color:#00b894; font-weight:bold;">✅ Kész</div>` : '');
+                    <button class="btn-done" onclick="updateStatus('${todayStr}',${idx},'done')">OK</button>
+                </div>` : (item.status==='done' ? `<div style="margin-top:5px; color:#00b894; font-weight:bold;">✅ OK</div>` : '');
             
             list.innerHTML += `<div class="card ${cls}"><div class="task-header"><div><b>${item.name}</b><br><small>${item.cat}</small></div></div>${btns}</div>`;
         });
         document.getElementById('empty-msg').style.display = allDone ? 'block' : 'none';
     }
 
-    function updateStatus(d,i,s) { state.dailyLog[d][i].status = s; renderToday(); saveData(); }
-    
-    function addNewTask() {
-        const name = document.getElementById('new-name').value;
-        if(!name) return alert("Név kell!");
-        const cat = document.getElementById('new-cat').value;
-        const type = document.getElementById('freq-type').value;
-        
-        let t = { id: 't_'+Date.now(), name, cat, freqType: type, startDate: new Date().toISOString() };
-        
-        if(type==='weekly_days') {
-            let days = [];
-            const dayButtons = document.querySelectorAll('.week-selector .day-btn');
-            const dayMap = [1, 2, 3, 4, 5, 6, 0]; // Hétfőtől Vasárnapig
-            
-            dayButtons.forEach((btn, index) => {
-                if(btn.classList.contains('selected')) days.push(dayMap[index]);
-            });
-
-            if(days.length === 0) return alert("Válassz ki legalább egy napot!");
-            t.days = days;
-        }
-        else if(type==='interval_week') t.interval = document.getElementById('interval-week-num').value;
-        else if(type==='monthly_fix') t.monthDay = document.getElementById('month-day-fix').value;
-
-        if(cat && !state.categories.includes(cat)) state.categories.push(cat);
-        state.tasks.push(t); 
-        
-        saveData(); 
-        alert("Mentve!"); 
-        document.getElementById('new-name').value='';
-        switchTab('tab-today');
-    }
-
-    function deleteTask(id) { 
-        if(confirm("Törlés?")) { 
-            state.tasks = state.tasks.filter(x => x.id !== id); 
-            saveData(); 
-            renderManageList();
-        } 
-    }
-
-    function isTaskDue(t, dateToCheck) {
-        const d = dateToCheck.getDate(); 
-        const day = dateToCheck.getDay();
-        
-        if(t.freqType === 'every_day') return true;
-        if(t.freqType === 'weekly_days') return t.days ? t.days.includes(day) : true;
-        if(t.freqType === 'monthly_fix') return d == t.monthDay;
-        
-        if(t.freqType === 'interval_week') {
-             const start = new Date(t.startDate);
-             start.setHours(0,0,0,0);
-             const current = new Date(dateToCheck);
-             current.setHours(0,0,0,0);
-             const diffDays = Math.floor((current - start) / (1000 * 60 * 60 * 24));
-             return diffDays >= 0 && diffDays % (t.interval * 7) === 0;
-        }
-        return false;
-    }
-
-    // UI Segéd
-    function changeDay(o) { state.currentDateObj.setDate(state.currentDateObj.getDate()+o); updateDateDisplay(); renderToday(); }
-    function updateDateDisplay() { document.getElementById('today-date').innerText = state.currentDateObj.toLocaleDateString('hu-HU', {weekday:'short', month:'short', day:'numeric'}); }
-    
     function renderManageList() { 
         document.getElementById('manage-list').innerHTML = state.tasks.map(t => 
             `<div class="card" style="display:flex; justify-content:space-between; align-items:center;">
-                <div><b>${t.name}</b><br><small>${t.cat}</small></div> 
-                <button class="btn-danger" style="flex:0; width:auto; padding:5px 15px;" onclick="deleteTask('${t.id}')">Törlés</button>
+                <div style="flex:1;"><b>${t.name}</b><br><small>${t.cat} | ${t.freqType}</small></div> 
+                <button class="btn-secondary btn-icon" onclick="loadTaskForEdit('${t.id}')">✏️</button>
+                <button class="btn-danger btn-icon" onclick="deleteTask('${t.id}')">🗑️</button>
             </div>`
         ).join(''); 
     }
@@ -445,14 +560,36 @@
         const v = document.getElementById('freq-type').value;
         document.getElementById('opt-weekly-days').style.display = v==='weekly_days'?'block':'none';
         document.getElementById('opt-interval-week').style.display = v==='interval_week'?'block':'none';
+        document.getElementById('opt-interval-month').style.display = v==='interval_month'?'block':'none';
         document.getElementById('opt-monthly-fix').style.display = v==='monthly_fix'?'block':'none';
     }
-    
+
+    // --- SEGÉDEK ---
+    function updateStatus(d,i,s) { state.dailyLog[d][i].status = s; renderToday(); saveData(); }
+    function changeDay(o) { state.currentDateObj.setDate(state.currentDateObj.getDate()+o); updateDateDisplay(); renderToday(); }
+    function updateDateDisplay() { 
+        const opts = {weekday:'short', month:'short', day:'numeric'};
+        const loc = currentLang === 'hu' ? 'hu-HU' : 'en-US';
+        document.getElementById('today-date').innerText = state.currentDateObj.toLocaleDateString(loc, opts); 
+    }
     function toggleDay(e) { e.classList.toggle('selected'); }
-    
     function filterCats() { 
         const div = document.getElementById('cat-chips'); div.innerHTML='';
         state.categories.forEach(c => div.innerHTML+=`<div class="chip" onclick="document.getElementById('new-cat').value='${c}'">${c}</div>`);
+    }
+
+    async function shareAccess() {
+        const currentUrl = window.location.href.split('?')[0];
+        const isWeb = currentUrl.startsWith('http');
+        const shareData = {
+            title: i18n[currentLang].app_title,
+            text: `családi feladatnapló: ${state.pantryId}`,
+            url: isWeb ? `${currentUrl}?id=${state.pantryId}` : undefined
+        };
+        try { await navigator.share(shareData); } catch (err) { copyIdToClipboard(); }
+    }
+    function copyIdToClipboard() {
+        navigator.clipboard.writeText(state.pantryId).then(() => alert("Copied!")).catch(()=>prompt("Copy:", state.pantryId));
     }
     
     window.switchTab = function(id, el) { 
@@ -461,7 +598,7 @@
         document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active')); 
         if(el) el.classList.add('active');
         else if(id === 'tab-today') document.querySelector('.nav-item:nth-child(1)').classList.add('active');
-        if(id === 'tab-settings') renderManageList();
+        if(id === 'tab-settings') { renderManageList(); cancelEdit(); }
     }
 </script>
 </body>
