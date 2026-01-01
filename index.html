@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Családi Feladatok/title>
+    <title>Családi Feladatok</title>
     
     <style>
         :root { --main: #6c5ce7; --accent: #00cec9; --bg: #dfe6e9; --danger: #ff7675; --text: #2d3436; }
@@ -16,7 +16,7 @@
         .login-box label { font-size: 0.8rem; color: #888; display: block; text-align: left; margin-top: 10px; }
         
         /* HEADER */
-        header { background: white; padding: 15px; position: sticky; top:0; z-index:100; box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
+        header { background: white; padding: 15px; position: sticky; top: 0; z-index:100; box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
         h1 { margin: 0; font-size: 1.2rem; color: var(--text); font-weight: 800; }
         
         .pantry-id-badge { 
@@ -142,9 +142,15 @@
 
                 <div id="opt-weekly-days" style="display:none;">
                     <div class="week-selector">
-                        <div class="day-btn" onclick="toggleDay(this)">H</div><div class="day-btn" onclick="toggleDay(this)">K</div><div class="day-btn" onclick="toggleDay(this)">Sz</div>
-                        <div class="day-btn" onclick="toggleDay(this)">Cs</div><div class="day-btn" onclick="toggleDay(this)">P</div><div class="day-btn" onclick="toggleDay(this)">Sz</div><div class="day-btn" onclick="toggleDay(this)">V</div>
+                        <div class="day-btn" onclick="toggleDay(this)">H</div>
+                        <div class="day-btn" onclick="toggleDay(this)">K</div>
+                        <div class="day-btn" onclick="toggleDay(this)">Sz</div>
+                        <div class="day-btn" onclick="toggleDay(this)">Cs</div>
+                        <div class="day-btn" onclick="toggleDay(this)">P</div>
+                        <div class="day-btn" onclick="toggleDay(this)">Sz</div>
+                        <div class="day-btn" onclick="toggleDay(this)">V</div>
                     </div>
+                    <small style="color:#888; display:block; margin-bottom:10px;">Jelöld ki a napokat!</small>
                 </div>
                 <div id="opt-interval-week" style="display:none;"><label>Minden X. héten:</label><input type="number" id="interval-week-num" value="1" min="1"></div>
                 <div id="opt-monthly-fix" style="display:none;"><label>Hányadikán:</label><input type="number" id="month-day-fix" min="1" max="31" value="1"></div>
@@ -202,12 +208,11 @@
     };
 
     // --- OKOS URL KEZELÉS (MAGIC LINK) ---
-    // Ha a linkben benne van hogy ?id=XXXX, akkor töltse ki magától
     const urlParams = new URLSearchParams(window.location.search);
     const idFromUrl = urlParams.get('id');
     if(idFromUrl) {
         document.getElementById('pantry-id').value = idFromUrl;
-        if(state.user) login(); // Ha már van neve, lépjen is be
+        if(state.user) login(); 
     }
 
     // --- INDÍTÁS ---
@@ -227,17 +232,13 @@
         localStorage.setItem('pantry_user', u);
         localStorage.setItem('pantry_id', pid);
         
-        // Ha nem volt az URL-ben, de most belépett, frissítsük az URL-t hogy könyvjelzőzhető legyen (opcionális)
-        // const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?id=' + pid;
-        // window.history.pushState({path:newUrl},'',newUrl);
-
         startApp();
     }
 
     function logout() {
         if(confirm("Biztosan kilépsz?")) {
             localStorage.clear();
-            window.location.href = window.location.pathname; // Tiszta újratöltés
+            window.location.href = window.location.pathname; 
         }
     }
 
@@ -249,173 +250,8 @@
         document.getElementById('display-pantry-id').innerText = state.pantryId;
         document.getElementById('sticky-pantry-id').innerText = "📋 ID: " + state.pantryId.substring(0,6) + "...";
         
-        // QR Kód generálása (API-val)
-        // Ha weben van az oldal, akkor a teljes linket kódoljuk bele. Ha nincs, akkor csak a nyers ID-t.
         const currentUrl = window.location.href.split('?')[0];
         const isWeb = currentUrl.startsWith('http');
         const qrData = isWeb ? `${currentUrl}?id=${state.pantryId}` : state.pantryId;
         
-        document.getElementById('qr-image').src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrData)}`;
-
-        updateDateDisplay();
-        fetchData();
-        setInterval(fetchData, 8000); // Ritkább szinkron elég
-    }
-
-    // --- MEGOSZTÁS FUNKCIÓK ---
-    async function shareAccess() {
-        const currentUrl = window.location.href.split('?')[0];
-        const isWeb = currentUrl.startsWith('http');
-        
-        const shareData = {
-            title: 'Családi Feladatok Belépés',
-            text: `Szia! Itt a családi feladatnapló kódja: ${state.pantryId}`,
-            url: isWeb ? `${currentUrl}?id=${state.pantryId}` : undefined
-        };
-
-        if (navigator.share) {
-            try {
-                await navigator.share(shareData);
-            } catch (err) {
-                console.log('Megosztás megszakítva');
-            }
-        } else {
-            // Ha nem támogatott a natív megosztás (pl. PC), másoljuk vágólapra
-            copyIdToClipboard();
-            alert("A kód a vágólapra másolva! Küldd el Messengeren.");
-        }
-    }
-
-    function copyIdToClipboard() {
-        navigator.clipboard.writeText(state.pantryId).then(() => {
-            alert("Kód kimásolva: " + state.pantryId);
-        });
-    }
-
-    // --- API & DATA ---
-    async function fetchData() {
-        updateSyncStatus('syncing');
-        const url = `${PANTRY_BASE}${state.pantryId}/basket/${BASKET_NAME}`;
-        try {
-            const res = await fetch(url);
-            if (!res.ok) {
-                if(res.status === 400 || res.status === 404) { await saveData(true); return; }
-                throw new Error("Hiba");
-            }
-            const data = await res.json();
-            state.tasks = data.tasks || [];
-            state.dailyLog = data.dailyLog || {};
-            state.categories = data.categories || [];
-            renderManageList(); renderToday(); updateSyncStatus('online');
-        } catch (e) { updateSyncStatus('error'); }
-    }
-
-    async function saveData(isInit = false) {
-        updateSyncStatus('syncing');
-        const url = `${PANTRY_BASE}${state.pantryId}/basket/${BASKET_NAME}`;
-        const payload = { tasks: state.tasks, dailyLog: state.dailyLog, categories: state.categories, lastUpdate: Date.now() };
-        try {
-            await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            updateSyncStatus('online');
-            if(!isInit) renderToday();
-        } catch(e) { updateSyncStatus('error'); }
-    }
-
-    function updateSyncStatus(s) {
-        const el = document.getElementById('sync-status');
-        if(s==='syncing') { el.innerText = '⌛'; el.className = 'sync-badge'; }
-        else if(s==='online') { el.innerText = '☁️ OK'; el.className = 'sync-badge active'; }
-        else { el.innerText = '⚠️ Hiba'; el.style.background='red'; el.style.color='white'; }
-    }
-
-    // --- UI LOGIKA (Rövidítve a lényegre) ---
-    function getTodayStr() { return state.currentDateObj.toISOString().split('T')[0]; }
-    
-    function renderToday() {
-        const list = document.getElementById('task-list'); list.innerHTML = '';
-        const todayStr = getTodayStr();
-        let dailyItems = state.dailyLog[todayStr] || [];
-        
-        // Auto-generálás
-        state.tasks.forEach(t => {
-            if (!dailyItems.some(i => i.taskId === t.id) && isTaskDue(t, state.currentDateObj)) {
-                dailyItems.push({ taskId: t.id, name: t.name, cat: t.cat||'Egyéb', status: 'todo' });
-            }
-        });
-        if (JSON.stringify(state.dailyLog[todayStr]) !== JSON.stringify(dailyItems)) state.dailyLog[todayStr] = dailyItems;
-
-        let allDone = true;
-        if(dailyItems.length === 0) allDone = false;
-
-        dailyItems.forEach((item, idx) => {
-            if(item.status === 'todo') allDone = false;
-            let cls = item.status === 'done' ? 'status-done' : (item.status === 'skipped' ? 'status-skipped' : 'status-todo');
-            let btns = item.status === 'todo' ? `
-                <div class="btn-row">
-                    <button class="btn-skip" onclick="updateStatus('${todayStr}',${idx},'skipped')">🚫</button>
-                    <button class="btn-done" onclick="updateStatus('${todayStr}',${idx},'done')">Kész</button>
-                </div>` : (item.status==='done' ? `<div style="margin-top:5px; color:#00b894; font-weight:bold;">✅ Kész</div>` : '');
-            
-            list.innerHTML += `<div class="card ${cls}"><div class="task-header"><div><b>${item.name}</b><br><small>${item.cat}</small></div></div>${btns}</div>`;
-        });
-        document.getElementById('empty-msg').style.display = allDone ? 'block' : 'none';
-    }
-
-    function updateStatus(d,i,s) { state.dailyLog[d][i].status = s; renderToday(); saveData(); }
-    
-    function addNewTask() {
-        const name = document.getElementById('new-name').value;
-        if(!name) return alert("Név kell!");
-        const cat = document.getElementById('new-cat').value;
-        const type = document.getElementById('freq-type').value;
-        let t = { id: 't_'+Date.now(), name, cat, freqType: type, startDate: new Date().toISOString() };
-        
-        if(type==='weekly_days') {
-            let days=[]; document.querySelectorAll('.day-btn.selected').forEach(e=>{ if(e.innerText=='H') days.push(1); /* stb */ }); 
-            // Egyszerűsítés: Ha üres, minden nap
-            t.days = days.length ? days : [0,1,2,3,4,5,6];
-        }
-        else if(type==='interval_week') t.interval = document.getElementById('interval-week-num').value;
-        else if(type==='monthly_fix') t.monthDay = document.getElementById('month-day-fix').value;
-
-        if(cat && !state.categories.includes(cat)) state.categories.push(cat);
-        state.tasks.push(t); saveData(); alert("Mentve!"); document.getElementById('new-name').value='';
-    }
-
-    function deleteTask(id) { if(confirm("Törlés?")) { state.tasks=state.tasks.filter(x=>x.id!==id); saveData(); } }
-
-    function isTaskDue(t, date) {
-        const d = date.getDate(); const day = date.getDay();
-        if(t.freqType === 'every_day') return true;
-        if(t.freqType === 'weekly_days') return t.days ? t.days.includes(day) : true;
-        if(t.freqType === 'monthly_fix') return d == t.monthDay;
-        // Egyszerűsített intervallum logika
-        if(t.freqType === 'interval_week') {
-             const diff = Math.floor((date - new Date(t.startDate))/(86400000));
-             return diff % (t.interval*7) === 0;
-        }
-        return false;
-    }
-
-    // UI Segéd
-    function changeDay(o) { state.currentDateObj.setDate(state.currentDateObj.getDate()+o); updateDateDisplay(); renderToday(); }
-    function updateDateDisplay() { document.getElementById('today-date').innerText = state.currentDateObj.toLocaleDateString('hu-HU',{weekday:'short', month:'short', day:'numeric'}); }
-    function renderManageList() { document.getElementById('manage-list').innerHTML = state.tasks.map(t=>`<div class="card" style="display:flex; justify-content:space-between;">${t.name} <button class="btn-danger" style="flex:0; padding:5px 10px;" onclick="deleteTask('${t.id}')">X</button></div>`).join(''); }
-    function renderFreqOptions() { /* Egyszerűsített logika a láthatóságra... */ 
-        const v = document.getElementById('freq-type').value;
-        document.getElementById('opt-weekly-days').style.display = v==='weekly_days'?'block':'none';
-        document.getElementById('opt-interval-week').style.display = v==='interval_week'?'block':'none';
-        document.getElementById('opt-monthly-fix').style.display = v==='monthly_fix'?'block':'none';
-    }
-    function toggleDay(e) { e.classList.toggle('selected'); }
-    function filterCats() { 
-        const div = document.getElementById('cat-chips'); div.innerHTML='';
-        state.categories.forEach(c=>div.innerHTML+=`<div class="chip" onclick="document.getElementById('new-cat').value='${c}'">${c}</div>`);
-    }
-    window.switchTab = function(id, el) { 
-        document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active')); document.getElementById(id).classList.add('active');
-        document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active')); if(el) el.classList.add('active');
-    }
-</script>
-</body>
-</html>
+        document.getElementById('qr-image').src = `
