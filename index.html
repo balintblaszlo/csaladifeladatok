@@ -60,8 +60,8 @@
         .qr-box { text-align: center; background: #f9f9f9; padding: 15px; border-radius: 10px; margin-top: 15px; border: 2px dashed #ccc; }
         .qr-box img { max-width: 150px; height: auto; }
 
-        /* INPUTOK */
-        select, input[type="text"], input[type="number"] { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; background: white; font-size: 1rem; }
+        /* INPUTOK - FRISSÍTVE: input[type="date"] hozzáadva */
+        select, input[type="text"], input[type="number"], input[type="date"] { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; background: white; font-size: 1rem; font-family: inherit; }
         
         .week-selector { display: flex; justify-content: space-between; gap: 4px; margin-bottom: 15px; }
         .day-btn { padding: 10px 0; flex: 1; text-align: center; border: 1px solid #ddd; border-radius: 6px; background: #fff; cursor: pointer; font-size: 0.8rem; font-weight: bold; }
@@ -156,6 +156,8 @@
                     <option value="monthly_fix" data-i18n="freq_monthly_fix">Havi fix napon</option>
                 </select>
 
+                <label data-i18n="start_date_label" style="font-size: 0.85rem; color:#666; margin-bottom: 5px; display:block;">Kezdő dátum (számításhoz):</label>
+                <input type="date" id="start-date-picker">
                 <div id="opt-weekly-days" style="display:none;">
                     <div class="week-selector">
                         <div class="day-btn" onclick="toggleDay(this)">H</div>
@@ -217,11 +219,11 @@
                     <p data-i18n="help_1"><b>1. Napló:</b> Itt látod a mai teendőket. Ha kész vagy, nyomj a 'Kész'-re. Ha ma nem csinálod meg, a 'Tiltás' jellel átugorhatod.</p>
                     <p data-i18n="help_2"><b>2. Új/Szerkesztés:</b> Itt adhatsz hozzá új feladatokat vagy módosíthatod a régieket. A ceruza ikonnal töltsd be szerkesztésre.</p>
                     <p data-i18n="help_3"><b>3. Szinkron:</b> Az adatok automatikusan mentődnek a felhőbe. Ha nem látsz valamit, nyomj a fenti 'Szinkronizálás most' gombra.</p>
-                    <p data-i18n="help_4"><b>4. Nyelv:</b> A feladatoknál megadhatsz külön Angol nevet is. Ha nincs megadva, a magyart mutatja.</p>
+                    <p data-i18n="help_4"><b>4. Fordítás:</b> Megadhatsz angol nevet is a feladatnak. A 'Kezdő dátum'-nál állíthatod be, mikortól számolódjon a ciklus.</p>
                 </div>
             </div>
 
-            <div class="version-tag">Verzió: v0.9 (Multilang)</div>
+            <div class="version-tag">Verzió: v0.95 (Date Picker)</div>
         </div>
     </div>
 </div>
@@ -234,7 +236,6 @@
 
 <script>
     // --- AUTOMATA KATEGÓRIA FORDÍTÓ ---
-    // Ha a felhasználó ezeket írja be, automatikusan fordítjuk
     const catDictionary = {
         "Konyha": "Kitchen", "Fürdőszoba": "Bathroom", "Fürdő": "Bathroom", 
         "Nappali": "Living Room", "Háló": "Bedroom", "Hálószoba": "Bedroom",
@@ -252,9 +253,10 @@
             every_x_weeks: "Minden X. héten:", every_y_months: "Minden Y. hónapban:", which_day: "Hányadikán:", btn_save: "Mentés", btn_update: "Módosítás",
             manage_tasks: "Feladatok kezelése", share_title: "🔗 Család meghívása", share_desc: "Hogy a többiek is lássák ezt a naplót, ugyanazt a kódot kell használniuk.",
             btn_send_code: "📤 Kód küldése", settings_title: "Saját adatok", force_sync: "Szinkronizálás most", btn_logout: "🚪 Kilépés",
-            help_title: "Használati Útmutató", help_1: "<b>1. Napló:</b> Itt látod a mai teendőket.", help_2: "<b>2. Szerkesztés:</b> A listában a ceruza ikonnal szerkeszthetsz.", help_3: "<b>3. Szinkron:</b> Automatikus, de manuálisan is frissíthetsz.", help_4: "<b>4. Fordítás:</b> Megadhatsz angol nevet is a feladatnak.",
+            help_title: "Használati Útmutató", help_1: "<b>1. Napló:</b> Itt látod a mai teendőket.", help_2: "<b>2. Szerkesztés:</b> A listában a ceruza ikonnal szerkeszthetsz.", help_3: "<b>3. Szinkron:</b> Automatikus, de manuálisan is frissíthetsz.", help_4: "<b>4. Dátum:</b> Beállíthatod a kezdő dátumot a ciklusokhoz.",
             nav_today: "Ma", nav_new: "Kezelés", nav_info: "Infó", confirm_del: "Biztosan törlöd? A korábbi teljesítések is törlődnek!",
-            task_saved: "Sikeres mentés!", task_deleted: "Törölve."
+            task_saved: "Sikeres mentés!", task_deleted: "Törölve.",
+            start_date_label: "Kezdő dátum (számításhoz):"
         },
         en: {
             app_title: "Family Tasks", login_subtitle: "One code for the whole family.", your_name: "Your Name", no_code: "No code yet?", btn_login: "Login",
@@ -263,9 +265,10 @@
             every_x_weeks: "Every X weeks:", every_y_months: "Every Y months:", which_day: "Day of month:", btn_save: "Save", btn_update: "Update",
             manage_tasks: "Manage Tasks", share_title: "🔗 Invite Family", share_desc: "Share this code so others can access the diary.",
             btn_send_code: "📤 Send Code", settings_title: "My Data", force_sync: "Sync Now", btn_logout: "🚪 Logout",
-            help_title: "User Guide", help_1: "<b>1. Diary:</b> View today's tasks here.", help_2: "<b>2. Edit:</b> Use the pencil icon to edit tasks.", help_3: "<b>3. Sync:</b> Automatic, but you can force sync here.", help_4: "<b>4. Translation:</b> You can add English names to tasks.",
+            help_title: "User Guide", help_1: "<b>1. Diary:</b> View today's tasks here.", help_2: "<b>2. Edit:</b> Use the pencil icon to edit tasks.", help_3: "<b>3. Sync:</b> Automatic, but you can force sync here.", help_4: "<b>4. Date:</b> Set start date for cyclic calculations.",
             nav_today: "Today", nav_new: "Manage", nav_info: "Info", confirm_del: "Delete task? History will also be deleted!",
-            task_saved: "Saved successfully!", task_deleted: "Deleted."
+            task_saved: "Saved successfully!", task_deleted: "Deleted.",
+            start_date_label: "Start Date (Calculation):"
         }
     };
 
@@ -275,7 +278,7 @@
         currentLang = currentLang === 'hu' ? 'en' : 'hu';
         localStorage.setItem('app_lang', currentLang);
         applyLanguage();
-        renderToday(); // Frissíteni kell a listát a nevek miatt
+        renderToday(); 
         renderManageList();
     }
 
@@ -291,13 +294,11 @@
         updateDateDisplay();
     }
 
-    // --- SEGÉDFÜGGVÉNY A FORDÍTÁSHOZ ---
     function getTaskName(t) {
-        // Ha a név objektum (van angol verzió), és angolul vagyunk
         if (typeof t.name === 'object') {
             return (currentLang === 'en' && t.name.en) ? t.name.en : t.name.hu;
         }
-        return t.name; // Régi formátum (csak string)
+        return t.name; 
     }
 
     function getCatName(cat) {
@@ -366,6 +367,9 @@
         const qrData = isWeb ? `${currentUrl}?id=${state.pantryId}` : state.pantryId;
         document.getElementById('qr-image').src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrData)}`;
 
+        // Beállítjuk a dátumválasztót a mai napra alapértelmezetten
+        document.getElementById('start-date-picker').value = new Date().toISOString().split('T')[0];
+
         updateDateDisplay();
         fetchData();
         setInterval(fetchData, 15000); 
@@ -419,7 +423,10 @@
         const cat = document.getElementById('new-cat').value;
         const type = document.getElementById('freq-type').value;
         
-        // Név mentése objektumként, ha van angol verzió
+        // Dátum kiolvasása a naptárból
+        const datePickerVal = document.getElementById('start-date-picker').value;
+        const finalStartDate = datePickerVal ? new Date(datePickerVal).toISOString() : new Date().toISOString();
+
         let finalName = nameEn ? { hu: nameHu, en: nameEn } : nameHu;
 
         let t = { 
@@ -427,7 +434,7 @@
             name: finalName, 
             cat, 
             freqType: type, 
-            startDate: editingTaskId ? state.tasks.find(x=>x.id===editingTaskId).startDate : new Date().toISOString() 
+            startDate: finalStartDate 
         };
         
         if(type==='weekly_days') {
@@ -467,7 +474,6 @@
         document.getElementById('btn-save-task').classList.add('btn-edit-mode');
         document.getElementById('cancel-edit').style.display = 'block';
 
-        // Név betöltése (kezeli a régi stringet és az új objektumot is)
         if (typeof t.name === 'object') {
             document.getElementById('new-name').value = t.name.hu;
             document.getElementById('new-name-en').value = t.name.en || '';
@@ -478,6 +484,12 @@
 
         document.getElementById('new-cat').value = t.cat;
         document.getElementById('freq-type').value = t.freqType;
+        
+        // Dátum betöltése a picker-be
+        if(t.startDate) {
+            document.getElementById('start-date-picker').value = t.startDate.split('T')[0];
+        }
+
         renderFreqOptions();
 
         if(t.freqType === 'weekly_days') {
@@ -501,6 +513,10 @@
         document.getElementById('cancel-edit').style.display = 'none';
         document.getElementById('new-name').value = '';
         document.getElementById('new-name-en').value = '';
+        
+        // Dátum visszaállítása mára
+        document.getElementById('start-date-picker').value = new Date().toISOString().split('T')[0];
+        
         document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('selected'));
     }
 
@@ -553,22 +569,16 @@
         
         state.tasks.forEach(t => {
             if (!dailyItems.some(i => i.taskId === t.id) && isTaskDue(t, state.currentDateObj)) {
-                // Itt most már nem tárolunk fix nevet a logban, csak a task ID-t, és rendereléskor fordítunk.
-                // De a kompatibilitás miatt a log objektumban még benne lehet a név.
                 dailyItems.push({ taskId: t.id, status: 'todo' });
             }
         });
         
-        // Log tisztítása (duplicate check)
-        // ... itt egyszerűsítve hagyjuk, a display logic a lényeg:
-
         let allDone = true;
         if(dailyItems.length === 0) allDone = false;
 
         dailyItems.forEach((item, idx) => {
-            // Task megkeresése a definíciók között a névhez
             const taskDef = state.tasks.find(x => x.id === item.taskId);
-            if(!taskDef) return; // Ha törölték közben
+            if(!taskDef) return; 
 
             const displayName = getTaskName(taskDef);
             const displayCat = getCatName(taskDef.cat);
@@ -608,16 +618,7 @@
 
     // --- SEGÉDEK ---
     function updateStatus(d,i,s) { 
-        // Frissítés: Ha nincs napi log bejegyzés (mert auto-generált), létre kell hozni
         if(!state.dailyLog[d]) state.dailyLog[d] = [];
-        // Mivel a renderToday dinamikusan fűzi össze a taskokat és a logot, 
-        // itt óvatosan kell kezelni az indexet. Egyszerűsítés: 
-        // A renderToday a 'dailyItems'-t rendereli. Az updateStatus a napi log indexét kapja?
-        // JAVÍTÁS: Az index a renderelt lista indexe. Ez veszélyes lehet. 
-        // Biztonságosabb ID alapján keresni a logban.
-        
-        // De a jelenlegi kód logikájában a renderToday frissíti a state.dailyLog-ot is renderelés előtt!
-        // Így az index helyes.
         state.dailyLog[d][i].status = s; 
         renderToday(); 
         saveData(); 
