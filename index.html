@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Családi Napló</title>
+    <title>Családi Feladatok/title>
     
     <style>
         :root { --main: #6c5ce7; --accent: #00cec9; --bg: #dfe6e9; --danger: #ff7675; --text: #2d3436; }
@@ -81,7 +81,7 @@
 
 <div id="login-screen">
     <div class="login-box">
-        <h2 style="color:var(--main); margin-top:0;">☁️ Családi Napló</h2>
+        <h2 style="color:var(--main); margin-top:0;">☁️ Családi Feladatok</h2>
         <p style="font-size:0.9rem; color:#666;">Egy kód az egész családnak.</p>
         
         <label>Te neved</label>
@@ -103,7 +103,7 @@
     <header>
         <div style="display:flex; flex-direction:column;">
             <div id="sticky-pantry-id" class="pantry-id-badge" onclick="copyIdToClipboard()">ID Másolása 📋</div>
-            <h1 style="margin-top:5px;">Napló</h1>
+            <h1 style="margin-top:5px;">Feladatok</h1>
         </div>
         <div class="sync-badge" id="sync-status">Offline</div>
     </header>
@@ -160,7 +160,7 @@
             
             <div class="card" style="border-left-color: var(--main);">
                 <h3 style="margin-top:0;">🔗 Család meghívása</h3>
-                <p>Hogy a többiek is lássák ezt a naplót, ugyanazt a kódot kell használniuk.</p>
+                <p>Hogy a többiek is lássák ezt a feladatnaplót, ugyanazt a kódot kell használniuk.</p>
                 
                 <button class="btn-secondary" onclick="shareAccess()">📤 Kód küldése (Messenger/Viber)</button>
                 
@@ -268,8 +268,8 @@
         const isWeb = currentUrl.startsWith('http');
         
         const shareData = {
-            title: 'Családi Napló Belépés',
-            text: `Szia! Itt a családi napló kódja: ${state.pantryId}`,
+            title: 'Családi Feladatok Belépés',
+            text: `Szia! Itt a családi feladatnapló kódja: ${state.pantryId}`,
             url: isWeb ? `${currentUrl}?id=${state.pantryId}` : undefined
         };
 
