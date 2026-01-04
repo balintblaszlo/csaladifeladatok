@@ -39,7 +39,7 @@
         /* KÁRTYÁK */
         .card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.04); border-left: 5px solid #ccc; position: relative; }
         .status-todo { border-left-color: var(--warn); }
-        .status-done { border-left-color: #00b894; background: #f0fff4; opacity: 1; } /* Javítva: opacity növelve */
+        .status-done { border-left-color: #00b894; background: #f0fff4; opacity: 1; }
         .status-skipped { border-left-color: #b2bec3; opacity: 0.6; filter: grayscale(100%); }
 
         .task-header { display: flex; justify-content: space-between; }
@@ -159,6 +159,7 @@
 
                 <label data-i18n="freq_label">Gyakoriság:</label>
                 <select id="freq-type" onchange="renderFreqOptions()">
+                    <option value="one_time" data-i18n="freq_one_time">Egyszeri alkalom</option>
                     <option value="every_day" data-i18n="freq_every_day">Minden nap</option>
                     <option value="weekly_days" data-i18n="freq_weekly_days">Heti konkrét napok</option>
                     <option value="interval_week" data-i18n="freq_interval_week">Ciklikus (Hetente)</option>
@@ -166,7 +167,7 @@
                     <option value="monthly_fix" data-i18n="freq_monthly_fix">Havi fix napon</option>
                 </select>
 
-                <label data-i18n="start_date_label" style="font-size: 0.85rem; color:#666; margin-bottom: 5px; display:block;">Kezdő dátum (számításhoz):</label>
+                <label data-i18n="start_date_label" style="font-size: 0.85rem; color:#666; margin-bottom: 5px; display:block;">Kezdő dátum / Dátum:</label>
                 <input type="date" id="start-date-picker">
                 <div id="opt-weekly-days" style="display:none;">
                     <div class="week-selector">
@@ -223,7 +224,7 @@
                 <button class="btn-danger" onclick="logout()" data-i18n="btn_logout">🚪 Kilépés</button>
             </div>
 
-            <div class="version-tag">Verzió: v2.0 (User Log & Info)</div>
+            <div class="version-tag">Verzió: v2.1 (One-Time Tasks)</div>
         </div>
     </div>
 </div>
@@ -249,7 +250,7 @@
         hu: {
             app_title: "Családi Feladatok", your_name: "Te neved", no_code: "Még nincs kódod?", btn_login: "Belépés",
             all_done: "Mára minden kész!", new_task: "➕ Új feladat", edit_task: "✏️ Szerkesztés", freq_label: "Gyakoriság:",
-            freq_every_day: "Minden nap", freq_weekly_days: "Heti konkrét napok", freq_interval_week: "Ciklikus (Hetente)", freq_interval_month: "Ciklikus (Havonta)", freq_monthly_fix: "Havi fix napon",
+            freq_one_time: "Egyszeri alkalom", freq_every_day: "Minden nap", freq_weekly_days: "Heti konkrét napok", freq_interval_week: "Ciklikus (Hetente)", freq_interval_month: "Ciklikus (Havonta)", freq_monthly_fix: "Havi fix napon",
             every_x_weeks: "Minden X. héten:", every_y_months: "Minden Y. hónapban:", which_day: "Hányadikán:", btn_save: "Mentés", btn_update: "Módosítás",
             manage_tasks: "Feladatok kezelése", share_title: "🔗 Család meghívása", share_desc: "Hogy a többiek is lássák ezt a naplót, ugyanazt a kódot kell használniuk.",
             btn_send_code: "📤 Kód küldése", settings_title: "Saját adatok", force_sync: "Szinkronizálás most", btn_logout: "🚪 Kilépés",
@@ -260,7 +261,7 @@
         en: {
             app_title: "Family Tasks", your_name: "Your Name", no_code: "No code yet?", btn_login: "Login",
             all_done: "All done for today!", new_task: "➕ New Task", edit_task: "✏️ Edit Task", freq_label: "Frequency:",
-            freq_every_day: "Every day", freq_weekly_days: "Specific weekdays", freq_interval_week: "Cyclic (Weeks)", freq_interval_month: "Cyclic (Months)", freq_monthly_fix: "Monthly fix date",
+            freq_one_time: "One-time only", freq_every_day: "Every day", freq_weekly_days: "Specific weekdays", freq_interval_week: "Cyclic (Weeks)", freq_interval_month: "Cyclic (Months)", freq_monthly_fix: "Monthly fix date",
             every_x_weeks: "Every X weeks:", every_y_months: "Every Y months:", which_day: "Day of month:", btn_save: "Save", btn_update: "Update",
             manage_tasks: "Manage Tasks", share_title: "🔗 Invite Family", share_desc: "Share this code so others can access the diary.",
             btn_send_code: "📤 Send Code", settings_title: "My Data", force_sync: "Sync Now", btn_logout: "🚪 Logout",
@@ -531,15 +532,19 @@
         const m = dateToCheck.getMonth();
         const y = dateToCheck.getFullYear();
         
-        if(t.freqType === 'every_day') return true;
-        if(t.freqType === 'weekly_days') return t.days ? t.days.includes(day) : true;
-        if(t.freqType === 'monthly_fix') return d == t.monthDay;
-        
         const startDate = new Date(t.startDate);
         startDate.setHours(0,0,0,0);
         const currDate = new Date(dateToCheck);
         currDate.setHours(0,0,0,0);
 
+        if(t.freqType === 'one_time') {
+            return currDate.getTime() === startDate.getTime();
+        }
+
+        if(t.freqType === 'every_day') return true;
+        if(t.freqType === 'weekly_days') return t.days ? t.days.includes(day) : true;
+        if(t.freqType === 'monthly_fix') return d == t.monthDay;
+        
         if(t.freqType === 'interval_week') {
              const diffDays = Math.floor((currDate - startDate) / (1000 * 60 * 60 * 24));
              return diffDays >= 0 && diffDays % (t.interval * 7) === 0;
